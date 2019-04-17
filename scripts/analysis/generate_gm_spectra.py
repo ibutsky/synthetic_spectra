@@ -38,7 +38,7 @@ def make_spectra(model_name, output, orientation, theta_list = [0], spectrum_dir
 
     fn = '/nobackupp2/nnsanche/%s/%s.%06d'%(sim_folder, sim_name, output)
     print(fn)
-    fn = '/nobackup/ibutsky/tmp/pioneer.003456'
+#    fn = '/nobackup/ibutsky/tmp/pioneer.003456'
     ds = yt.load(fn)
 	
     # this is how you would add the ions as "fields", but you don't need this

@@ -64,8 +64,8 @@ def make_spectra(model_name, output, orientation, theta_list = None, \
                 ray_end = [1, gcenter[1]+r*np.sin(theta), gcenter[2]+r*np.cos(theta)]
 
             elif orientation == 'face':
-                ray_start = [gcenter[1]+r*np.sin(theta), gcenter[2]+r*np.cos(theta), 0]
-                ray_end = [gcenter[1]+r*np.sin(theta), gcenter[2]+r*np.cos(theta), 1]
+                ray_start = [gcenter[1]+r*np.cos(theta), gcenter[2]+r*np.sin(theta), 0]
+                ray_end = [gcenter[1]+r*np.cos(theta), gcenter[2]+r*np.sin(theta), 1]
 
 			# this makes a 'light_ray' object and adds the absorption lines of
 			# the elements in ion_list

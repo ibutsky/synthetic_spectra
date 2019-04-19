@@ -28,7 +28,7 @@ coljson_list     = []; sigcoljson_list = [];
 # looping through all of the analyzed spectra
 os.chdir(work_dir)
 spec_files = glob.glob('COS-FUV*')
-
+#spec_files = ['COS-FUV_face_anisd_11.2Gyr_r10kpc']
 for spec in spec_files:
     orientation, model = np.loadtxt('%s/info.txt'%(spec), skiprows = 1, unpack = False, usecols = (0, 1), dtype = str)
     time, redshift, impact = np.loadtxt('%s/info.txt'%(spec), skiprows = 1, unpack = True, usecols = (2, 3, 4))
@@ -37,6 +37,9 @@ for spec in spec_files:
     json_fn = '%s/%s_lineids.json'%(spec, spec)
     json_out = '%s/json_eqw.dat'%(spec)
     aodm_fn = '%s/%s_ibnorm.fits'%(spec, spec)
+    aodm_plot_dir = '%s/aodm_plots'%(spec)
+    if not os.path.isdir(aodm_plot_dir):
+        os.mkdir(aodm_plot_dir)
 
     if os.path.isfile(veeper_fn):
         restwaves, cols, sigcols, bvals, sigbvals, vels, sigvels, flags = np.loadtxt(veeper_fn, unpack=True, skiprows = 1, \
@@ -51,7 +54,6 @@ for spec in spec_files:
         veeper_ions[i] = temp.replace(" ", "")
 
     json_ions, json_restwaves, json_eqw, json_eqwerr, json_col, json_colerr = eqw.json_eqw(json_fn, aodm_fn, json_out)
-    
     dummy = -1
     print(spec)
     for i in range(len(master_ion_list)):
@@ -60,12 +62,11 @@ for spec in spec_files:
         for rw in all_restwaves:
             ncopies = 1
             index = (veeper_ions == ion) & (restwaves == rw)
+ #           print('veeper', veeper_ions[index], cols[index], sigcols[index])
             if ion in veeper_ions and len(veeper_ions[index]) > 0:
                 if len(veeper_ions[index]) > 1:
-#                    print("veeper:", veeper_ions[index], cols[index], sigcols[index])
-                  #  index = index & (sigcols > 0)
                     ncopies += len(veeper_ions[index]) - 1
-                    print(ncopies)
+ #                   print(ncopies)
                 restwave_list = np.append(restwave_list,   ncopies*[rw])
                 ion_list      = np.append(ion_list,       ncopies*[ion])
                 col_list      = np.append(col_list,         cols[index])
@@ -89,19 +90,31 @@ for spec in spec_files:
 
             
             json_index = (json_ions == ion) & (json_restwaves == rw)
+#            print('json:', json_ions[json_index], json_col[json_index], json_colerr[json_index])
+
             if ion in json_ions and len(json_ions[json_index]) > 0:
                 if len(json_ions[json_index]) > ncopies:
-                    print('json:', json_ions[json_index], json_col[json_index], json_colerr[json_index])
-                    
-                ewjson_list     = np.append(ewjson_list,        json_eqw[json_index][:ncopies])
-                sigewjson_list  = np.append(sigewjson_list,  json_eqwerr[json_index][:ncopies])
-                coljson_list    = np.append(coljson_list,       json_col[json_index][:ncopies])
-                sigcoljson_list = np.append(sigcoljson_list, json_colerr[json_index][:ncopies])
+                    ewjson_list     = np.append(ewjson_list,        json_eqw[json_index][:ncopies])
+                    sigewjson_list  = np.append(sigewjson_list,  json_eqwerr[json_index][:ncopies])
+                    coljson_list    = np.append(coljson_list,       json_col[json_index][:ncopies])
+                    sigcoljson_list = np.append(sigcoljson_list, json_colerr[json_index][:ncopies])
+                elif len(json_ions[json_index]) == 1 and ncopies > 1:
+                    ewjson_list     = np.append(ewjson_list,        [json_eqw[json_index]]*ncopies)
+                    sigewjson_list  = np.append(sigewjson_list,  [json_eqwerr[json_index]]*ncopies)
+                    coljson_list    = np.append(coljson_list,       [json_col[json_index]]*ncopies)
+                    sigcoljson_list = np.append(sigcoljson_list, [json_colerr[json_index]]*ncopies)
+                else:
+                    ewjson_list     = np.append(ewjson_list,        json_eqw[json_index])
+                    sigewjson_list  = np.append(sigewjson_list,  json_eqwerr[json_index])
+                    coljson_list    = np.append(coljson_list,       json_col[json_index])
+                    sigcoljson_list = np.append(sigcoljson_list, json_colerr[json_index])
             else:
-                ewjson_list     = np.append(ewjson_list,     dummy)
-                sigewjson_list  = np.append(sigewjson_list,  dummy)
-                coljson_list    = np.append(coljson_list,    dummy)
-                sigcoljson_list = np.append(sigcoljson_list, dummy)
+                ewjson_list     = np.append(ewjson_list,     ncopies*[dummy])
+                sigewjson_list  = np.append(sigewjson_list,  ncopies*[dummy])
+                coljson_list    = np.append(coljson_list,    ncopies*[dummy])
+                sigcoljson_list = np.append(sigcoljson_list, ncopies*[dummy])
+
+  #          print(len(col_list), len(coljson_list))
                 
             impact_list      = np.append(impact_list,           ncopies*[impact])
             model_list       = np.append(model_list,             ncopies*[model])
@@ -111,8 +124,9 @@ for spec in spec_files:
           
 
             eqws, sigeqw, lncol, siglncol, flag_aodm, velcent, velwidth = \
-                eqw.find_ion_limits(aodm_fn, [ion], orientation, model, impact, \
-                                        restwave = rw, redshift = redshift, silent = 1)
+                eqw.find_ion_limits(ion, aodm_fn, [ion], orientation, model, impact, restwave = rw, \
+                                        redshift = redshift, silent = 1, plots = 0, plot_dir = aodm_plot_dir, \
+                                        vrange = (-150, 150), sat_limit = 0.1)
             flag_aodm_list= np.append(flag_aodm_list, ncopies*[flag_aodm[0]])
             eqw_list      = np.append(eqw_list,            ncopies*[eqws[0]])
             sigeqw_list   = np.append(sigeqw_list,       ncopies*[sigeqw[0]])

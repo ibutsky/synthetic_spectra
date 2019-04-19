@@ -48,17 +48,14 @@ def ct_ew2n(ew, wrest, fval):
 #return 1.13d17*ew/(fval * wrest**2)
 	return 1.13e17*ew/(fval * wrest**2)
 
-def eqwrange(inwave, inspec, inerror, vrange, w0, f0, \
+def eqwrange(ion, wave, spec, error, vrange, w0, f0, \
               limit = 1., norm = 1.0, ctnorm = 1, nsatpix = 3, \
-              silent = 0, plots = 0, sig_limit = 3, sat_limit = 0.1):
+              silent = 0, plots = 0, sig_limit = 3, sat_limit = 0.1, \
+	      plot_dir = '.'):
 
 
 	### DEFAULT SETTING FOR FLAG. 1 = ok.
 	flag = 1
-
-	spec = inspec
-	error = inerror
-	wave = inwave
 
 	if norm:
   		spec = spec / norm
@@ -66,7 +63,7 @@ def eqwrange(inwave, inspec, inerror, vrange, w0, f0, \
 	
 	if ctnorm:
 		#grab the median flux value in the +/-600km/s range, outside the line area
-		vel = (wave-w0)/w0*3e5
+		vel = (wave-w0)/w0*2.9979e5
 		qq = ((vel > -1200) & (vel < vrange[0])) | ((vel > vrange[1]) & (vel < 1200))
 		med = np.median(spec[qq])
 		spec  /= med
@@ -81,8 +78,8 @@ def eqwrange(inwave, inspec, inerror, vrange, w0, f0, \
 	# get rid of infinity values down the line
 	# note: results sensitive to the value we set spec to
 	# sort of converges but not really
-	spec[spec <= 0] = 1e-40
-	iv = (vv > vrange[0]) & (vv < vrange[1])# & (spec > 0)
+	spec[spec <= 0] = 0.01
+	iv = (vv > vrange[0]) & (vv < vrange[1]) 
 	if len(vv[iv]) == 0:
 		# Something is wrong. We were given a spectrum with no points in the velocity range. Pull out!!
 		print("Spectrum has no points in the velocity range")
@@ -91,11 +88,15 @@ def eqwrange(inwave, inspec, inerror, vrange, w0, f0, \
 		return
 
 	sat = (spec[iv] < sat_limit) | (spec[iv] < error[iv])
-	if len(spec[iv][sat]) == 0:
+	if len(spec[iv][sat]) > 0:
 		spec[iv][sat] = error[iv][sat]
-	elif len(spec[iv][sat]) > nsatpix:
-		flag += 8  #If there are more pixels than we set, then trip the saturated flag
+		if len(spec[iv][sat]) > nsatpix:
+			flag += 8  #If there are more pixels than we set, then trip the saturated flag
 
+
+	# now that we've calculated the saturation flag, we can filter spec[iv] 
+        # down even more to get more accurate column density estimates
+#	iv =  iv & (spec > sat_limit)	
 
 	# plotting the flux vs velocities for all pixels and those used in fit
 	if plots:
@@ -109,7 +110,7 @@ def eqwrange(inwave, inspec, inerror, vrange, w0, f0, \
 		ax[0].set_ylabel('Normalized Flux')
 		
 	dwave = deriv(wave[iv])
-	d_eqw = dwave * (1. - spec[iv]) * 1000.  # why 1000?
+	d_eqw = dwave * (1. - spec[iv])  # * 1000.  # why 1000?
 
 	eqw = np.sum(d_eqw)
 
@@ -123,12 +124,15 @@ def eqwrange(inwave, inspec, inerror, vrange, w0, f0, \
 #	plt.plot(vv[iv], f_eqw)
 #	plt.show()
 	# now ready to calculate vwidth
-	eqwerr = np.sqrt(np.sum((deriv(wave[iv])*1000.)**2 \
-					 	* (error[iv])**2 ))
+	# Got rid of * 1000
+#        eqwerr = np.sqrt(np.sum((deriv(wave[iv])*1000)**2 \
+ #                                               * (error[iv])**2 ))
+	
+	eqwerr = np.sqrt(np.sum(deriv(wave[iv])**2  * error[iv])**2 )
 	EW = [eqw, eqwerr]
 
   	# Upper limit flag
-	if eqw > sig_limit*eqwerr:
+	if eqw < sig_limit*eqwerr:
   		flag += 4
 
   	# Convert to strings
@@ -159,7 +163,6 @@ def eqwrange(inwave, inspec, inerror, vrange, w0, f0, \
 
 	tauerr = error / spec
 	nerr = tauerr / 2.654e-15 / f0 / w0 * deriv(vv)
-
 	if plots:
 		ax[1].errorbar(vv, n,  yerr = nerr)#, drawstyle = 'steps-mid-')
 		ax[1].errorbar(vv[iv], n[iv], yerr = nerr[iv])#, drawstyle = 'steps-mid-')
@@ -168,8 +171,8 @@ def eqwrange(inwave, inspec, inerror, vrange, w0, f0, \
 		ax[1].set_xlim(-250, 250)
 		ax[1].set_xlabel('Relative Velocity (km/s)')
 		ax[1].set_ylabel('Column Density (cm$^{-2}$)')
-
-		plt.show()
+		fig.tight_layout()
+		plt.savefig('%s/%s_%.1f_flag_%i.png'%(plot_dir, ion, w0, flag))
 
 	col = np.sum(n[iv])
 	colerr = np.sqrt(np.sum(nerr[iv]**2))
@@ -184,10 +187,11 @@ def eqwrange(inwave, inspec, inerror, vrange, w0, f0, \
 			print('Limit N = (%e) +/- %e'%(col, colerr*limit))
 			print('Limit N = (%e) +/- %e'%(np.log10(np.abs(col)), np.log10(colerr * limit)))
 			print('W_lambda = (%e) +/- %e mA over %s km/s'%(eqw, eqwerr*limit, str(vrange)))
-	return eqw, eqwerr, np.log10(np.abs(col)), np.log10(colerr*limit), flag, velcent, velwidth
+	return eqw, eqwerr, np.log10(np.abs(col)), np.log10(col+colerr)-np.log10(col), flag, velcent, velwidth
 
 
-def find_ion_limits(fn, ion_list, orientation, model, impact, restwave = 0, redshift = 0, vrange = (-200, 200), silent = 0):
+def find_ion_limits(ion, fn, ion_list, orientation, model, impact, restwave = 0, redshift = 0,\
+			    vrange = (-200, 200), silent = 0, plots = 0, plot_dir = '.', sat_limit = 0.1):
     ion_names = np.loadtxt('../../dla.lst', unpack=True, skiprows = 1, usecols=(1), dtype = 'str')
     ion_wls, ion_fs = np.loadtxt('../../dla.lst', unpack=True, skiprows = 1,usecols=(0, 3))
     ion_wls_int = ion_wls.astype(int)
@@ -213,7 +217,8 @@ def find_ion_limits(fn, ion_list, orientation, model, impact, restwave = 0, reds
 	    wl_mask =  (ion_wls_int[ion_mask] == int(w0))
 	    f0 = ion_fs[ion_mask][wl_mask][0]
 
-	    eqw, eqwerr, col, colerr, flag, velcent, velwidth = eqwrange(wl, flux, ferr, vrange, w_obs, f0, silent=silent)
+	    eqw, eqwerr, col, colerr, flag, velcent, velwidth = eqwrange(ion, wl, flux, ferr, vrange, w_obs, f0, silent=silent, \
+									   plots = plots, plot_dir = plot_dir)
 	    eqw_list.append(eqw)
 	    eqwerr_list.append(eqwerr)
 	    col_list.append(col)
@@ -270,7 +275,7 @@ def json_eqw(json_file, fits_file, outfile):
 		ion_name = np.loadtxt(outfile, unpack = True, skiprows = 1, usecols = 0, dtype = 'str')
 		restwave, eqw, eqw_err, col, col_err = np.loadtxt(outfile, unpack = True, skiprows = 1, usecols =  (1, 2, 3, 4, 5))
 
-	return ion_name, restwave, eqw, eqw_err, col, col_err
+	return np.array(ion_name), np.array(restwave), np.array(eqw), np.array(eqw_err), np.array(col), np.array(col_err)
 
 
 		

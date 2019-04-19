@@ -94,7 +94,7 @@ def plot_data_scatter(ion, xfield = 'impact', yfield = 'col', model = None, orie
         yerr = 10**yerr
         ax.set_yscale('log')
         
-        sat = flagscatter == 13
+        sat = flagscatter == 9
         ax.scatter(xscatter[sat], yscatter[sat],  marker = "^", edgecolor = color, facecolor = 'white')
         nondetect = flagscatter == 5
         ax.scatter(xscatter[nondetect], yscatter[nondetect],  marker = "v", edgecolor = color, facecolor = 'white')

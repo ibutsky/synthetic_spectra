@@ -24,7 +24,7 @@ def veeper_fit(view, model, time, r, working_dir = '../../data/analyzed_spectra/
     os.chdir(current_dir)
 
 
-view =  'edge_theta1.0'
+#view =  'edge_theta1.0'
 view = 'face'
 model = 'anisd'
 time = 11.2

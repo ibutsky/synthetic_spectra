@@ -5,8 +5,15 @@ import numpy as np
 
 
 
-def load_data(property_list, fn = '../../data/analyzed_spectra/combined_spectra.h5',\
+def load_data(property_list, fn = None, use_filtered = True,
                   ion = None, orientation = None, model = None, impact = None, time = None):
+
+
+    if fn == None:
+        if use_filtered:
+            fn = '../../data/analyzed_spectra/filtered_spectra.h5'
+        else:
+            fn = '../../data/analyzed_spectra/combined_spectra.h5'
 
     data = h5.File(fn, 'r')
     
@@ -28,7 +35,6 @@ def load_data(property_list, fn = '../../data/analyzed_spectra/combined_spectra.
         return_array.append((data[prop].value)[mask])
 
     data.close()
-
     return return_array
 
 
@@ -60,18 +66,34 @@ def plot_details(xfield, yfield):
     return xlims, ylims, xlabel, ylabel
 
 def plot_data_scatter(ion, xfield = 'impact', yfield = 'col', model = None, orientation = None, \
-                                              time = None, impact = None, ax = None, color = 'black', \
-                          label = None, annotate_ion = True, axis_labels = True):
+                           use_filtered = True, time = None, impact = None, ax = None, color = 'black', \
+                          label = None, annotate_ion = True, axis_labels = True, marker_size = 20, \
+                          set_ylim = True):
 
     xerrfield = '%serr'%(xfield)
     yerrfield = '%serr'%(yfield)
     
     if xfield == 'impact':
         xerrfield = 'impact'
-    field_list = [xfield, xerrfield, yfield, yerrfield, 'flag_aodm']
+    if use_filtered:
+        flagfield = 'flag'
+    else:
+        flagfield = 'flag_aodm'
+    field_list = [xfield, xerrfield, yfield, yerrfield, flagfield]
 
-    xscatter, xerr, yscatter, yerr, flagscatter = load_data(field_list, ion = ion, \
+    xscatter, xerr, yscatter, yerr, flagscatter = load_data(field_list, ion = ion, use_filtered = use_filtered,\
                                       model = model, orientation = orientation, impact = impact, time = time)
+    
+    
+    # If using filtered data, only keep data points that are measured (above -9999)
+    if use_filtered:
+        mask = (xscatter > -9999.) & (yscatter > -9999)
+        xscatter = xscatter[mask]
+        xerr     = xerr[mask]
+        yscatter = yscatter[mask]
+        yerr     = yerr[mask]
+        flagscatter = flagscatter[mask]
+
 
     if ax == None:
         fig, ax = plt.subplots(nrows = 1, ncols = 1, figsize=(6, 6))
@@ -80,30 +102,33 @@ def plot_data_scatter(ion, xfield = 'impact', yfield = 'col', model = None, orie
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
     ax.set_xlim(xlims)
-    ax.set_ylim(ylims)
+    if set_ylim:
+        ax.set_ylim(ylims)
 
     
     if yfield == 'col':
-        yscatter_lim, yscatter_limerr  = load_data(['col_json', 'col_json_err'], ion = ion, model = model, \
-                                     orientation = orientation, impact = impact, time = time)
-        mask = (flagscatter  != 1)
-        yscatter[mask] = yscatter_lim[mask]
-        yerr[mask]     = yscatter_limerr[mask]
+        if not use_filtered:
+            yscatter_lim, yscatter_limerr  = load_data(['col_aodm', 'col_aodm_err'], ion = ion, model = model, \
+                                     orientation = orientation, impact = impact, time = time, use_filtered = use_filtered)
+            mask = (flagscatter  != 1)
+            yscatter[mask] = yscatter_lim[mask]
+            yerr[mask]     = yscatter_limerr[mask]
 
         yscatter = 10**yscatter
         yerr = 10**yerr
         ax.set_yscale('log')
         
         sat = flagscatter == 9
-        ax.scatter(xscatter[sat], yscatter[sat],  marker = "^", edgecolor = color, facecolor = 'white')
+        ax.scatter(xscatter[sat], yscatter[sat],  marker = "^", edgecolor = color, facecolor = 'white', s = marker_size)
         nondetect = flagscatter == 5
-        ax.scatter(xscatter[nondetect], yscatter[nondetect],  marker = "v", edgecolor = color, facecolor = 'white')
+        ax.scatter(xscatter[nondetect], yscatter[nondetect],  marker = "v", edgecolor = color, facecolor = 'white', s = marker_size)
         detect = flagscatter == 1
-        ax.scatter(xscatter[detect], yscatter[detect],  marker = "s", edgecolor = color, facecolor = 'white', label = label)
+        ax.scatter(xscatter[detect], yscatter[detect],  marker = "s", edgecolor = color, facecolor = 'white', label = label, s = marker_size)
+        ax.errorbar(xscatter[detect], yscatter[detect], yerr = yerr[detect], color = 'black', linestyle = '')
 
         
     else:
-        ax.scatter(xscatter, yscatter, edgecolor = color, label = label, facecolor = 'white')
+        ax.scatter(xscatter, yscatter, edgecolor = color, label = label, facecolor = 'white', s = marker_size)
     ax.errorbar(xscatter, yscatter, yerr = yerr, color = color, facecolor = None, linestyle = '')
     if annotate_ion:
         annotate_ion_name(ax, ion)
@@ -139,8 +164,9 @@ def annotate_ion_name(ax, ion_name, fontsize = 18, x_factor = 0.85, y_factor = 0
 
     
 def plot_multipanel_scatter(ion_list, xfield = 'impact', yfield = 'col', nrows = 2, fig = None, ax = None, \
-                                model = None, orientation = None, time = None, impact = None, \
-                                color = 'black', label = None, annotate_ion = True, compare = None):
+                                model = None, orientation = None, time = None, impact = None, marker_size = 20,\
+                                color = 'black', label = None, annotate_ion = True, compare = None, use_filtered = True, 
+                            set_ylim = True):
     ncols = int((len(ion_list) + nrows - 1)/ nrows)
     if ax is None:
         fig, ax = plt.subplots(nrows = nrows, ncols = ncols, figsize=(4*ncols, 3.8*nrows), sharex = True, sharey = False)
@@ -176,9 +202,9 @@ def plot_multipanel_scatter(ion_list, xfield = 'impact', yfield = 'col', nrows =
         
         
             plot_data_scatter(ion, xfield = xfield, yfield = yfield, ax = ax[row][col], \
-                              model = model, orientation = orientation, time = time, \
-                              impact = impact, color = color, label = label, \
-                              annotate_ion = annotate_ion, axis_labels = False)
+                              model = model, orientation = orientation, time = time, use_filtered = use_filtered,\
+                              impact = impact, color = color, label = label, marker_size = marker_size,\
+                              annotate_ion = annotate_ion, axis_labels = False, set_ylim = set_ylim)
             
             if row == nrows - 1:
                 ax[row][col].set_xlabel(xlabel)

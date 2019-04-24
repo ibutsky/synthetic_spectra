@@ -10,6 +10,78 @@ import h5py as h5
 import eqwrange as eqw
 import spec_helper_functions as shf
 
+
+def best_measurement(veeper_col, veeper_colerr, aodm_col, aodm_colerr, flag, \
+                         vel, vel_err, bval, bval_err):
+
+    col_list = []; colerr_list = [], vel_list = []; vel_errlist = [];\
+    bval_list = []; bvalerr_list = []; flag_list = []
+    # first see if there are any good detections
+    detected = (flag == 1) & (veeper_colerr > 0)
+    sat      = (flag == 9)
+    uplim    = (flag == 5)
+    if len(veeper_col[detected]) > 0:
+        if len(veeper_col[detected]) > 1:
+            inds    = veeper_colerr[detected].argsort()            
+            col_list.append(       veeper_col[detected][inds][0])
+            colerrr_list.append(veeper_colerr[detected][inds][0])
+            
+            vel_list.append(       vel[detected][0])
+            velerr_list.append(vel_err[detected][0])
+            bval_list.append(       bval[detected][0])
+            bvalerr_list.append(bval_err[detected][0])
+
+        else:
+            col_list.append(      veeper_col[detected])
+            colerr_list.append(veeper_colerr[detected])
+
+            vel_list.append(         vel[detected])
+            velerr_list.append(  vel_err[detected])
+            bval_list.append(       bval[detected])
+            bvalerr_list.append(bval_err[detected])
+        
+        flag_list.append(1)
+
+    elif len(veeper_col[sat]) > 0:
+        if len(veeper_col[sat]) > 1:
+            inds = aodm_col[sat].argsort()
+            col_list.append(aodm_col[sat][inds][0])
+            colerr_list.append(aodm_err[sat][inds][0])
+            
+            vel_list.append(       vel[sat][0])
+            velerr_list.append(vel_err[sat][0])
+            bval_list.append(       bval[sat][0])
+            bvalerr_list.append(bval_err[sat][0])
+        else:
+            col_list.append(aodm_col[sat])
+            colerr_list.append(aodm_err[sat])
+
+            vel_list.append(       vel[sat])
+            velerr_list.append(vel_err[sat])
+            bval_list.append(       bval[sat])
+            bvalerr_list.append(bval_err[sat])
+        flag_list.append(9)
+
+    elif len(veeper_col[uplim]) > 0:
+        if len(veeper_col[uplim]) > 1:
+            inds = aodm_col[uplim].argsort()
+            col_list.append(    aodm_col[uplim][inds][0])
+            colerr_list.append(aodm_colerr[sat][inds][0])
+
+        else:
+            col_list.append(      aodm_col[uplim])
+            colerr_list.append(aodm_colerr[uplim])
+
+
+        vel_list.append(-9999)
+        velerr_list.append(-9999)
+        bval_list.append(-9999)
+        bvalerr_list.append(-9999)
+        
+        flag_list.append(5)
+
+    return col_list, colerr_list, vel_list, velerr_list, bval_list, bvalerr_list, flag_list
+
 master_ion_list = ['HI', 'OVI', 'CII', 'CIII', 'SiII', 'SiIII', 'SiIV',  'NIII', 'NV']
 #restwave_list = [1215.67, 1031.9261, 1037.0182, 1334.5323
 
@@ -20,7 +92,7 @@ spec_outfile = h5.File('combined_spectra.h5', 'w')
 orientation_list = [];      model_list = [];   time_list = [];  redshift_list = []; 
 impact_list      = [];   restwave_list = [];    ion_list = [];       col_list = []; 
 sigcol_list      = [];       bval_list = [];    vel_list = [];   sigbval_list = []; 
-sigvel_list      = [];   ion_name_list = [];   flag_list = []; flag_aodm_list = []; 
+sigvel_list      = [];       flag_list = []; flag_aodm_list = []; 
 eqw_list         = [];     sigeqw_list = [];  lncol_list = [];  siglncol_list = []; 
 velcent_list     = [];   velwidth_list = []; ewjson_list = []; sigewjson_list = []; 
 coljson_list     = []; sigcoljson_list = [];
@@ -54,7 +126,7 @@ for spec in spec_files:
         veeper_ions[i] = temp.replace(" ", "")
 
     json_ions, json_restwaves, json_eqw, json_eqwerr, json_col, json_colerr = eqw.json_eqw(json_fn, aodm_fn, json_out)
-    dummy = -1
+    dummy = -9999.
     print(spec)
     for i in range(len(master_ion_list)):
         ion = master_ion_list[i].replace(" ", "")

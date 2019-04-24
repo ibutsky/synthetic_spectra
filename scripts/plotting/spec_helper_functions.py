@@ -3,33 +3,37 @@ from astropy.io import fits
 import numpy as np
 import os
 
-def orientation_folder(orientation):
-    if orientation == 'face':
-        return 'FACE-ON'
-    elif orientation == 'edge_theta0':
-        return 'EDGE-THETA0.0'
-    elif orientation == 'edge_theta1.0':
-        return 'EDGE-THETA1.0'
-    elif orientation == 'edge_theta1.5':
-        return 'EDGE-THETA1.5'
+
+
+def spec_base_filename(orientation, model, time, r): 
+    return 'COS-FUV_%s_%s_%.1fGyr_r%ikpc'%(orientation, model, time, r)
+
+
+def load_velocity_data(ion, orientation, model, time, radius,\
+                       work_dir = '../../data/analyzed_spectra' ):
+    # TEMP
+    if time == 11.2:
+        redshift = 0.2
     else:
-        print("ERROR: Unrecognized orientation")
+        redshift = 0
+        print("ARE YOU SURE YOU WANT REDSHIFT = 0?")
 
-def model_folder(model):
-    if model == 'stream':
-        return 'STREAM'
-    elif model == 'anisd':
-        return 'ANISD'
+    w0 = restwave(ion, redshift)
+
+    base = spec_base_filename(orientation, model, time, radius)
+    wl, flux, ferr = load_spec_from_fits('%s/%s/%s_ibnorm.fits'%(work_dir,base, base))
+    vv = (wl-w0) / w0 * 2.9979e5
+    
+    fit = '%s/%s/FitInspection.fits'%(work_dir,base)
+    if os.path.isfile(fit):
+        wlfit, fluxfit, ferrfit = load_spec_from_fits(fit)
+        vvfit = (wlfit-w0) / w0 * 2.9979e5
     else:
-        print("ERROR: Unrecognized model")
-
-def spec_folder(orientation, model):
-    return '../%s/%s/'%(orientation_folder(orientation), model_folder(model))
-
-def spec_base_filename(orientation, model, r): 
-    dir = spec_folder(orientation, model)
-    fn = 'COS-FUV_%s_%s_13.0Gyr_r%ikpc'%(orientation, model, r)
-    return dir+fn
+        print("ERROR NO VPMODEL FITS FILE")
+        fluxfit = flux
+        vvfit = vv
+    
+    return vv, flux, vvfit, fluxfit, wl, wlfit, w0
 
 def load_spec_from_fits(fn):
     spec = fits.open(fn)

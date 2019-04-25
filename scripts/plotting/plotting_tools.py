@@ -8,7 +8,6 @@ import numpy as np
 def load_data(property_list, fn = None, use_filtered = True,
                   ion = None, orientation = None, model = None, impact = None, time = None):
 
-
     if fn == None:
         if use_filtered:
             fn = '../../data/analyzed_spectra/filtered_spectra.h5'

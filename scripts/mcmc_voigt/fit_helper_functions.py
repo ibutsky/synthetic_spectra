@@ -18,7 +18,7 @@ def guess_parameters(vel, flux, fluxerr, sig_lim = 2):
     dwave = deriv(vel)
     d_eqw = dwave * (1. - flux) 
     eqw = np.sum(d_eqw)
-    eqw_err = np.sqrt(np.sum(deriv(vel**2  * fluxerr)**2 ))
+    eqw_err = np.sqrt(np.sum(deriv(vel)**2  * fluxerr)**2 )
 
     f_eqw = np.cumsum(d_eqw) / np.max(np.cumsum(d_eqw)) #cumulative eqw fraction                                   
     # interpolate for velocity at which fraction of eqw = 0.5                                                      
@@ -60,7 +60,6 @@ def lnlike(theta, x, y, yerr, sat_lim = 0.1):
 
 def lnprior(theta):
     x0, amp, fwhml, fwhmg, lnf = theta
-    
     if (-250 < x0 < 250) and (0.0 <= amp < 10.0) and (0.0 < fwhml < 250.0)\
             and (0.0 < fwhmg < 250.0) and (-10.0 < lnf <= 1.0):
         return 0.0
@@ -71,6 +70,22 @@ def lnprob(theta, x, y, yerr):
     if not np.isfinite(lp):
         return -np.inf
     return lp + lnlike(theta, x, y, yerr)
+
+
+def set_rows_cols(num_plots):
+    if num_plots < 1:
+        nrows = 0
+        ncols = 0
+    if num_plots == 1:
+        nrows = 1
+        ncols = 1
+    elif num_plots < 9:
+        nrows = 2
+        ncols = int(num_plots / 2.)
+    else:
+        nrows = 3
+        ncols = int(num_plots / 3.)
+    return nrows, ncols
 
 
 def fit_single_voigt_profile(x, y, yerr, initial_guess, nwalkers = 100, \
@@ -171,7 +186,8 @@ def fit_spectrum(model, orientation, radius, ion_list = [], time = 11.2, normali
 lerr2 fwhm_g[10] gerr1 gerr2 lnf[13] lnferr1 lnferr2\n')
     # plotting is temporary
     ncols = int(len(ion_list) / 2)
-    fig, ax = plt.subplots(nrows=2, ncols=ncols, figsize=(12, 6))
+    nrows, ncols = set_rows_cols(len(ion_list))
+    fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(4*nrows, 3.8*ncols))
     vv_list = []
     flux_list = []
     ferr_list = []
@@ -179,6 +195,14 @@ lerr2 fwhm_g[10] gerr1 gerr2 lnf[13] lnferr1 lnferr2\n')
     for i, ion in enumerate(ion_list):
         row = int(i / ncols)
         col = i - row*ncols
+        if nrows == 1:
+            if ncols == 1:
+                ax = axes
+            else:
+                ax = axes[i]
+        else:
+            ax = axes[row][col]
+
         if normalize:
             flux, ferr =  normalize_flux(ion, wl, flux, ferr, redshift = redshift, vmin = vmin, vmax = vmax)
         vv_ion, flux_ion, ferr_ion = ion_velocity_range(ion, wl, flux, ferr, redshift = redshift, vmin=vmin, vmax = vmax)
@@ -188,10 +212,7 @@ lerr2 fwhm_g[10] gerr1 gerr2 lnf[13] lnferr1 lnferr2\n')
         theta = [result[0][0], result[1][0], result[2][0], result[3][0]]
 
         plot_ion_fit(ion, vv_ion, flux_ion, ferr_ion, theta, initial_guess = initial_guess, \
-                         color = 'red', ax = ax[row][col], label = "mcmc fit" )
-#        if row == 0 and col == 0:
-#             ax[row][col].legend(loc = 'lower right')
-#        plot_veeper_ion_fit(ion, model, orientation, radius, ax = ax[row][col], vmin = vmin, vmax = vmax)
+                         color = 'red', ax = ax, label = "mcmc fit" )
 
         vv_list.append(vv_ion)
         flux_list.append(flux_ion)
@@ -206,7 +227,7 @@ lerr2 fwhm_g[10] gerr1 gerr2 lnf[13] lnferr1 lnferr2\n')
                                     result[4][0], result[4][1],result[4][2]))
 #    plt.show()
     if plot_veeper:
-        plot_veeper_ion_fit(ax, ion_list, model, orientation, radius, vmin = vmin, vmax = vmax)
-    ax[0][0].legend(loc = 'lower right')
+        plot_veeper_ion_fit(axes, ion_list, model, orientation, radius, vmin = vmin, vmax = vmax)
+#    ax[0][0].legend()#loc = 'lower right')
     plt.savefig('../../plots/mcmc/%s_%s_%ikpc.png'%(orientation, model, radius))
     return vv_list, flux_list, ferr_list, theta_list

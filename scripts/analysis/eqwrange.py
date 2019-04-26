@@ -128,7 +128,9 @@ def eqwrange(ion, wave, spec, error, vrange, w0, f0, \
 #        eqwerr = np.sqrt(np.sum((deriv(wave[iv])*1000)**2 \
  #                                               * (error[iv])**2 ))
 	
-	eqwerr = np.sqrt(np.sum(deriv(wave[iv])**2  * error[iv])**2 )
+#	eqwerr = np.sqrt(np.sum((deriv(wave[iv])**2  * error[iv])**2 )
+	eqw_err = np.sqrt(np.sum((deriv(wave[iv])**2  * error[iv])**2) )
+
 	EW = [eqw, eqwerr]
 
   	# Upper limit flag

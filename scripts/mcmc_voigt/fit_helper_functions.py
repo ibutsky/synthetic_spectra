@@ -1,13 +1,45 @@
 import numpy as np
 import emcee
+import sys
 from astropy.modeling.models import Voigt1D
 import corner
 import matplotlib.pylab as plt
 import seaborn as sns
 import spec_helper_functions as shf
+from scipy import signal
+
 
 def deriv(x):
     return np.diff(np.append(x, x[-1]))
+
+def smooth(x, window_len = 30, window = 'blackman'):
+    if x.ndim != 1:
+        print("smooth only accepts 1 dimension arrays.")
+    if x.size < window_len:
+        print("Input vector needs to be bigger than window size.")
+
+    if window_len<3:
+        return x
+       
+    if not window in ['flat', 'hanning', 'hamming', 'bartlett', 'blackman']:
+        print("Window is on of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'")
+
+    s=np.r_[2*x[0]-x[window_len:1:-1], x, 2*x[-1]-x[-1:-window_len:-1]]
+    if window == 'flat': #moving average
+        w=np.ones(window_len,'d')
+    else:
+        w=eval('np.'+window+'(window_len)')     
+    y=np.convolve(w/w.sum(),s,mode='valid')
+    return y[window_len-1:-window_len+1] 
+
+
+def find_num_peaks(vv_ion, flux_ion, vcent = 0, width = 100, window_len = 30, window = 'blackman'):    
+    # Finds the number of peaks in the absorption spectrum to decide wether to fit one line or two
+    fsmooth = smooth(flux_ion, window_len = window_len, window = window)
+    vsmooth = smooth(vv_ion, window_len = window_len, window = window)
+    peaks = signal.find_peaks(1/fsmooth, height = 1.1)[0]
+
+    return vsmooth[peaks]
 
 def calc_eqw(vel, flux, fluxerr):
     dwave = deriv(vel)
@@ -26,7 +58,6 @@ def guess_parameters(vel, flux, fluxerr, sig_lim = 2, sat_lim = 0.05):
     eqw, eqw_err = calc_eqw(vel, flux, fluxerr)
     d_eqw = deriv(vel) * (1. - flux)
     f_eqw = np.cumsum(d_eqw) / np.max(np.cumsum(d_eqw)) 
-    vcent = np.interp(0.5, f_eqw, vel)
     lnf_guess = np.log(0.5)
 
     # if it's a non-detection, set the amplitude guess to 0
@@ -38,21 +69,20 @@ def guess_parameters(vel, flux, fluxerr, sig_lim = 2, sat_lim = 0.05):
     sat_flux = flux[flux < sat_lim]
     if len(sat_flux) > 3:
         amp_guess =  eqw / 40.
-
         fwhl_guess = 50 + eqw / 50;
         fwhg_guess = fwhl_guess
     
-    
-    theta = [vcent, amp_guess, fwhl_guess, fwhg_guess, vcent, 0, fwhg_guess, fwhl_guess, lnf_guess]
-    theta_double = [vcent-eqw/2., amp_guess, fwhl_guess/2., fwhg_guess/2., \
-                        vcent + eqw/2., amp_guess, fwhl_guess/2., fwhg_guess/2.,lnf_guess]
-    prob_single = lnprob(theta, vel, flux, fluxerr, sat_lim = sat_lim)
-    prob_double = lnprob(theta_double, vel, flux, fluxerr, sat_lim = sat_lim)
-    
-    print(theta, theta_double)
-    print(prob_single, prob_double)
-    if prob_double > prob_single:
-        theta = theta_double
+    vcent_peaks = find_num_peaks(vel, flux)
+    if len(vcent_peaks) == 0:
+        vcent = 0
+        amp_guess = 0
+    else:
+        vcent = vcent_peaks[0]
+    theta = [vcent, amp_guess, fwhl_guess, fwhg_guess, lnf_guess]
+    if len(vcent_peaks) > 1:
+        theta = [vcent_peaks[0], amp_guess, fwhl_guess/2., fwhg_guess/2., \
+                 vcent_peaks[1], amp_guess, fwhl_guess/2., fwhg_guess/2.,lnf_guess]
+
 
     return theta
 
@@ -72,22 +102,19 @@ def lnlike(theta, x, y, yerr, sat_lim = 0.05):
     inv_sigma2 = 1.0/(yerr**2 + model**2*np.exp(2*lnf))
     return -0.5*(np.sum((y-model)**2*inv_sigma2 - np.log(inv_sigma2)))
 
-def lnprior(theta, x, y, yerr, sig_lim = 2, sat_lim = 0.05, vmin = -250, vmax = 250):
-    x0, amp, fwhml, fwhmg, x02, amp2, fwhml2, fwhmg2, lnf = theta
+def calc_prior(x0, amp, fwhml, fwhmg, lnf, vmin = -250, vmax = 250):
+    prior = -np.inf
     if (vmin < x0 < vmax) and (0.0 <= amp    < 10.00) and (0.0 <= fwhml  < 250.0) \
-                          and (0.0 <= fwhmg  < 250.0) and (vmin < x02    <  vmax) \
-                          and (0.0 <= amp2   < 10.00) and (0.0 <= fwhml2 < 250.0) \
-                          and (0.0 <= fwhmg2 < 250.0) and (-10. < lnf    <=  1.0):
+                          and (0.0 <= fwhmg  < 250.0) and (-10. < lnf    <=  1.0):
+        prior = 0.0
+    return prior 
 
-        eqw, eqw_err = calc_eqw(x, y, yerr)
-        if eqw < sig_lim * eqw_err and (amp > 0 or amp2 > 0):
-            return -np.inf
-        # if the fit is trying for a second peak, make sure it's a true second peak
-        if np.abs(x02 - x0) < sig_lim * eqw_err  and amp2 > 1e-2:
-                return - np.inf
-        return 0.0
-    
-    return -np.inf
+def lnprior(theta, x, y, yerr, sig_lim = 2, sat_lim = 0.05,  vmin = -250, vmax = 250):
+    #todo don't need x, y, yerr or siglim in this
+    prior = calc_prior(theta[0], theta[1], theta[2], theta[3], theta[-1])
+    if len(theta) == 9:
+        prior += calc_prior(theta[4], theta[5], theta[6], theta[7], theta[-1])
+    return prior
 
 def lnprob(theta, x, y, yerr, sig_lim = 2, sat_lim = 0.05):
     lp = lnprior(theta, x, y, yerr, sig_lim = sig_lim, sat_lim = sat_lim)
@@ -112,24 +139,38 @@ def set_rows_cols(num_plots):
     return nrows, ncols
 
 
-def fit_single_voigt_profile(x, y, yerr, initial_guess, nwalkers = 100, \
+def fit_single_voigt_profile(x, y, yerr, initial_guess, nwalkers = 100,\
                                  niterations = 100, jump_size = 1e-2, corner_plot = False):
-    ndim = 9
+
+    ndim  = len(initial_guess)
     pos = [initial_guess + jump_size*np.random.randn(ndim) for i in range(nwalkers)]
     sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(x, y, yerr))
     sampler.run_mcmc(pos, niterations)
     samples = sampler.chain[:, int(nwalkers/2):, :].reshape((-1, ndim))
     samples[:, ndim-1] = np.exp(samples[:, ndim-1])
-    w0_mcmc, amp_mcmc, fwhml_mcmc, fwhmg_mcmc, w02_mcmc, amp2_mcmc, \
-        fwhml2_mcmc, fwhmg2_mcmc, lnf_mcmc  = map(lambda v: (v[1], v[2]-v[1], v[1]-v[0]),\
+    if ndim == 5:
+        w0_mcmc, amp_mcmc, fwhml_mcmc, fwhmg_mcmc, lnf_mcmc = map(lambda v: (v[1], v[2]-v[1], v[1]-v[0]),\
                             zip(*np.percentile(samples, [16, 50, 84], axis=0)))
+        result = [w0_mcmc, amp_mcmc, fwhml_mcmc, fwhmg_mcmc, lnf_mcmc]
+        theta = [result[0][0], result[1][0], result[2][0], result[3][0], result[4][0]]
+    elif ndim == 9:
+        w0_mcmc, amp_mcmc, fwhml_mcmc, fwhmg_mcmc, w02_mcmc, amp2_mcmc, \
+            fwhml2_mcmc, fwhmg2_mcmc, lnf_mcmc  = map(lambda v: (v[1], v[2]-v[1], v[1]-v[0]),\
+                            zip(*np.percentile(samples, [16, 50, 84], axis=0)))
+        result = [w0_mcmc, amp_mcmc, fwhml_mcmc, fwhmg_mcmc, w02_mcmc, amp2_mcmc, fwhml2_mcmc, fwhmg2_mcmc, lnf_mcmc]
+        theta = [result[0][0], result[1][0], result[2][0], \
+                 result[3][0], result[4][0], result[5][0], \
+                 result[6][0], result[7][0], result[8][0]]
     
     if corner_plot:
-        fig = corner.corner(samples, labels=["$w0$", "$amp$", "fwhm_L", "fwhm_g", "$\ln\,f$"],
-                      truths=initial_guess)
+        if len(initial_guess) == 5:
+            labels = ["$w0$", "$amp$", "fwhm_L", "fwhm_g", "$\ln\,f$"]
+        elif len(initial_guess) == 9:
+            labels = ["$w0$", "$amp$", "fwhm_L", "fwhm_g", "$w02$", "$amp2$", "fwhm_L2", "fwhm_g2","$\ln\,f$"]
+        fig = corner.corner(samples, labels=labels, truths=theta)
         plt.savefig('mcmc_voigt_fit.png')
-    
-    return w0_mcmc, amp_mcmc, fwhml_mcmc, fwhmg_mcmc, w02_mcmc, amp2_mcmc, fwhml2_mcmc, fwhmg2_mcmc, lnf_mcmc
+
+    return result
 
 
 def plot_ion_fit(ion, x, y, yerr, theta, initial_guess = None, color = 'red', label = None, ax = None, sat_lim = 0.05, linestyle = 'solid'):
@@ -172,7 +213,9 @@ def plot_veeper_ion_fit(ion, model, orientation, radius, ax=None, time = 11.2, v
 
 def voigt_fit(theta, x, y, yerr, sat_lim = 0.05):
     peak1 = Voigt1D(x_0=theta[0], amplitude_L=theta[1], fwhm_L=theta[2], fwhm_G=theta[3])(x)
-    peak2 = Voigt1D(x_0=theta[4], amplitude_L=theta[5], fwhm_L=theta[6], fwhm_G=theta[7])(x)
+    peak2 = np.zeros(len(peak1))
+    if len(theta) > 5:
+        peak2 = Voigt1D(x_0=theta[4], amplitude_L=theta[5], fwhm_L=theta[6], fwhm_G=theta[7])(x)
     model = 1.0 - (peak1 + peak2)
     sat = model < sat_lim
     model[sat] = np.mean(sat_lim)
@@ -189,7 +232,7 @@ def ion_velocity_range(ion, wl, flux, fluxerr, redshift = 0, vmin = -200, vmax =
 
 
  
-def fit_spectrum(model, orientation, radius, ion_list = [], time = 11.2, normalize = False,\
+def fit_spectrum(model, orientation, radius, ion_list = [], time = 11.2, normalize = False, corner_plot = False, \
                 vmin=-150, vmax =150, nwalkers = 100, niterations = 100, save_fit = True, sat_lim = 0.05, sig_lim = 0.05, \
                  work_dir = '../../data/analyzed_spectra', use_errors = True, plot_veeper = True):
 
@@ -231,10 +274,35 @@ lerr2 fwhm_g[10] gerr1 gerr2 lnf[13] lnferr1 lnferr2\n')
             flux, ferr =  normalize_flux(ion, wl, flux, ferr, redshift = redshift, vmin = vmin, vmax = vmax)
         vv_ion, flux_ion, ferr_ion = ion_velocity_range(ion, wl, flux, ferr, redshift = redshift, vmin=vmin, vmax = vmax)
         initial_guess = guess_parameters(vv_ion, flux_ion, ferr_ion, sat_lim = sat_lim, sig_lim = sig_lim)
-        result = fit_single_voigt_profile(vv_ion, flux_ion, ferr_ion, initial_guess, niterations=niterations);
-        theta = [result[0][0], result[1][0], result[2][0], result[3][0], \
-                 result[4][0], result[5][0], result[6][0], result[7][0]]
- 
+
+        result = fit_single_voigt_profile(vv_ion, flux_ion, ferr_ion,  initial_guess, \
+                                                     corner_plot = corner_plot, niterations=niterations);
+       
+        if len(result) == 5:
+            theta = [result[0][0], result[1][0], result[2][0], \
+                 result[3][0], result[4][0]]
+
+        elif len(result) == 9:
+            theta = [result[0][0], result[1][0], result[2][0], \
+                     result[3][0], result[4][0], result[5][0], \
+                     result[6][0], result[7][0], result[8][0]]    
+
+#        prob_single = lnprob(theta_single, vv_ion, flux_ion, ferr_ion)
+#        prob_double = lnprob(theta_double, vv_ion, flux_ion, ferr_ion)
+#        dL_single = result_single[2][2] - result_single[2][1]
+#        dL_double = result_double[2][2]- result_double[2][1]
+#        print(ion, prob_single, prob_double, theta_single[-1], theta_double[-1])
+#        print(ion, result_single[2][0], dL_single, result_double[2][0], dL_double)
+#        print(theta_single, theta_double)
+#        if prob_single > prob_double:
+#            theta = theta_single
+#            initial_guess = initial_guess_single
+#            result = result_single
+#        else:
+#            theta = theta_double
+#            initial_guess = initial_guess_double
+#            result = result_double
+
         if plot_veeper:
             plot_veeper_ion_fit(ion, model, orientation, radius, ax = ax, vmin = vmin, vmax = vmax)
         plot_ion_fit(ion, vv_ion, flux_ion, ferr_ion, theta, initial_guess = initial_guess, sat_lim = sat_lim, \

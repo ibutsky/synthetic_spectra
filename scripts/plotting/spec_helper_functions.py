@@ -30,6 +30,7 @@ def load_velocity_data(ion, orientation, model, time, radius,\
         vvfit = (wlfit-w0) / w0 * 2.9979e5
     else:
         print("ERROR NO VPMODEL FITS FILE")
+        wlfit = wl
         fluxfit = flux
         vvfit = vv
     

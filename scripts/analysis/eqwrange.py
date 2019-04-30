@@ -129,7 +129,7 @@ def eqwrange(ion, wave, spec, error, vrange, w0, f0, \
  #                                               * (error[iv])**2 ))
 	
 #	eqwerr = np.sqrt(np.sum((deriv(wave[iv])**2  * error[iv])**2 )
-	eqw_err = np.sqrt(np.sum((deriv(wave[iv])**2  * error[iv])**2) )
+	eqwerr = np.sqrt(np.sum((deriv(wave[iv])**2  * error[iv])**2) )
 
 	EW = [eqw, eqwerr]
 
@@ -242,7 +242,7 @@ def json_eqw(json_file, fits_file, outfile):
 		restwave, eqw, eqw_err, col, col_err = \
 		    np.loadtxt(outfile, unpack = True, skiprows = 1, usecols =  (1, 2, 3, 4, 5))
 	
-	if not os.path.isfile(outfile):
+	if not os.path.isfile(outfile) and os.path.isfile(json_file):
 		out =  open(outfile, 'w')
 		out.write('#ion_name, restwave, EQW, EQW_err, logN, logN_err\n')
 		ion_name = []; restwave = []; eqw = []; eqw_err = []; col = []; col_err = []
@@ -273,7 +273,7 @@ def json_eqw(json_file, fits_file, outfile):
 				out.write('%s %f %e %e %e %e\n'%(al.ion_name, al.wrest.value, al.attrib['EW'].value, \
 						     al.attrib['sig_EW'].value, al.attrib['logN'], al.attrib['sig_logN']))
 		out.close()
-	if len(open(outfile).readlines()) > 1:
+	if os.path.isfile(outfile) and len(open(outfile).readlines()) > 1:
 		ion_name = np.loadtxt(outfile, unpack = True, skiprows = 1, usecols = 0, dtype = 'str')
 		restwave, eqw, eqw_err, col, col_err = np.loadtxt(outfile, unpack = True, skiprows = 1, usecols =  (1, 2, 3, 4, 5))
 

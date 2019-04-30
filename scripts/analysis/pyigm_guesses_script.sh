@@ -4,10 +4,10 @@ time=11.2
 # Redshift at which spectra was generated (or estimate)
 redshift=0.2
 # Name of model: 'stream' or 'anisd'
-model="anisd"
+model="stream"
 # Orientation of the disk (relative to observer/line-of-sight)
 # Options: 'face', 'edge_theta0', 'edge_theta1.0', 'edge_theta1.5'
-orient="edge_theta1.0"
+orient="edge_theta1.5"
 # The impact paramter; 10 - 100, in intervals of 10
 radius=10
 # The desired number of impact parameters to analyze in this script

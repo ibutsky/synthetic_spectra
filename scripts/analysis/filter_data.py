@@ -152,7 +152,7 @@ for view in views:
 
 
 
-spec_outfile = h5.File('filtered_spectra.h5', 'w')
+spec_outfile = h5.File('../../data/analyzed_spectra/filtered_spectra.h5', 'w')
 
 dataset_names = ['impact', 'time', 'redshift', 'col', 'colerr', 'bval', 'bvalerr', 'vel', 'velerr', 'flag']
 datasets = [impact_list, time_list, redshift_list, col_list, sigcol_list, bval_list, sigbval_list, vel_list, sigvel_list,flag_list]

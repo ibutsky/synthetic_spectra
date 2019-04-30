@@ -86,7 +86,7 @@ master_ion_list = ['HI', 'OVI', 'CII', 'CIII', 'SiII', 'SiIII', 'SiIV',  'NIII',
 #restwave_list = [1215.67, 1031.9261, 1037.0182, 1334.5323
 
 work_dir = '../../data/analyzed_spectra'
-spec_outfile = h5.File('combined_spectra.h5', 'w')
+spec_outfile = h5.File('%s/combined_spectra.h5'%(work_dir), 'w')
 
 
 orientation_list = [];      model_list = [];   time_list = [];  redshift_list = []; 

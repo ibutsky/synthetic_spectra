@@ -8,6 +8,94 @@ import seaborn as sns
 import spec_helper_functions as shf
 from scipy import signal
 
+from scipy.special import wofz
+from astropy.constants import c as C
+echarge = 4.803204505713468e-10
+m_e = 9.10938291e-28
+c = C.to('cm/s').value
+c2 = 29979245800.0
+
+def Hfunc(x,a):
+    z=x+1j*a
+    I=wofz(z).real
+    return I
+
+def find_ion_props(ion, redshift = 0):
+    ion = ion.replace(" ", "")
+    if ion == 'HI':
+        restwave = 1215.67
+        gamma =  4.690000e+08 
+        fosc =  4.160000e-01
+    elif ion == 'CII':
+        restwave = 1334.5323
+        gamma = 2.410000e+08    
+        fosc = 1.290000e-01
+    elif ion == 'CIII':
+        restwave = 977.020
+        gamma = 1.767000e+09
+        fosc = 7.586e-1
+    elif ion == 'CIV':
+        restwave = 1548.204
+        gamma = 2.650000e+08    
+        fosc = 1.900000e-01
+    elif ion == 'NV':
+        restwave = 1238.821
+        gamma = 3.400000e+08    
+        fosc = 1.560000e-01
+    elif ion == 'NIII':
+        restwave = 989.799
+        gamma = 4.180000e+08 
+        fosc = 1.230000e-01
+    elif ion == 'SiII':
+        restwave = 1190.4158
+        gamma =  6.530000e+08
+        fosc = 2.770000e-01
+    elif ion == 'SiIII':
+        restwave = 1206.5
+        gamma = 2.480000e+09    
+        fosc = 1.630000e+00
+    elif ion == 'SiIV':
+        restwave = 1402.7729
+        gamma = 8.630000e+08    
+        fosc = 2.550000e-01
+    elif ion == 'MgII':
+        restwave = 1239.9253
+    elif ion == 'OVI':
+        restwave = 1031.9261
+        gamma = 4.160000e+08    
+        fosc = 1.330000e-01
+    else:
+        print("%s not recognized as ion"%(ion))
+    return restwave, gamma, fosc
+
+
+def veeper_voigt_fit(waves, theta, ion_props, z = 0, sat_lim = 0.1):
+    peak1 = 1-single_voigt_fit(waves, theta[0], theta[1], theta[2], ion_props)
+    model = 1 - peak1
+    if len(theta) > 4:
+        peak2 = 1 - single_voigt_fit(waves, theta[3], theta[4], theta[5], ion_props)
+        model = 1 - (peak1 + peak2)
+
+    return model
+
+def single_voigt_fit(waves, coldens, bval, vels, ion_props, z = 0, sat_lim = 0.1):
+    tautot=np.zeros(len(waves))
+    thatfactor=(1.+z)
+
+    lam = waves
+    lam0, gam, fosc = ion_props
+    dlam=bval*lam0/2.9979e5  #Doppler param in wavelength                                                                                
+    x=(lam-lam0-lam0*vels/2.9979e5)/dlam
+    a=gam/(4.*np.pi*(c*1e13/lam0**2*dlam))
+    vp=Hfunc(x,a)
+    tauval= np.sqrt(np.pi) * echarge ** 2 / m_e / c ** 2 * (lam0 * 1e-8) ** 2 / dlam * 1e8 * (10 ** coldens) * fosc * vp
+    tautot+=tauval
+    model =  np.exp(-tautot)
+
+    sat = model < sat_lim
+    model[sat] = np.mean(sat_lim)
+
+    return model
 
 def deriv(x):
     return np.diff(np.append(x, x[-1]))
@@ -49,11 +137,14 @@ def calc_eqw(vel, flux, fluxerr):
 
     return eqw, eqw_err
 
-def guess_parameters(vel, flux, fluxerr, sig_lim = 2, sat_lim = 0.05):
-
+def guess_parameters(waves, flux, fluxerr, ion_props, sig_lim = 2, sat_lim = 0.1):
+    w0 = np.median(waves)
+    vel = (waves - w0) / w0*2.997e5
     amp_guess = 1.0 - np.min(flux)
     if amp_guess < 0:
+        col_guess = 0
         amp_guess = 0
+    col_guess = 12 + 2*amp_guess
 
     eqw, eqw_err = calc_eqw(vel, flux, fluxerr)
     d_eqw = deriv(vel) * (1. - flux)
@@ -62,27 +153,31 @@ def guess_parameters(vel, flux, fluxerr, sig_lim = 2, sat_lim = 0.05):
 
     # if it's a non-detection, set the amplitude guess to 0
     if eqw < sig_lim*eqw_err:
-        amp_guess = 0
+        col_guess = 0
 
-    fwhl_guess = eqw 
-    fwhg_guess = eqw 
+    
+    bval_guess = eqw
     sat_flux = flux[flux < sat_lim]
     if len(sat_flux) > 3:
-        amp_guess =  eqw / 40.
-        fwhl_guess = 50 + eqw / 50;
-        fwhg_guess = fwhl_guess
+        col_guess =  16.
+        bval_guess = 30 + eqw / 50;
+
     
     vcent_peaks = find_num_peaks(vel, flux)
     if len(vcent_peaks) == 0:
         vcent = 0
-        amp_guess = 0
+        col_guess = 0
     else:
         vcent = vcent_peaks[0]
-    theta = [vcent, amp_guess, fwhl_guess, fwhg_guess, lnf_guess]
-    if len(vcent_peaks) > 1:
-        theta = [vcent_peaks[0], amp_guess, fwhl_guess/2., fwhg_guess/2., \
-                 vcent_peaks[1], amp_guess, fwhl_guess/2., fwhg_guess/2.,lnf_guess]
 
+    theta = [col_guess, bval_guess, vcent, lnf_guess]
+
+    if len(vcent_peaks) > 1:
+        vcent2 = vcent_peaks[1]
+        bval_guess= np.abs(vcent2 - vcent)/2
+        theta = [col_guess + 1, bval_guess, vcent,\
+                 col_guess + 1, bval_guess, vcent2, lnf_guess]
+    print(theta)    
     return theta
 
 def normalize_flux(ion, wl, flux, ferr, redshift = 0, vmin = -150, vmax = 150):
@@ -94,32 +189,30 @@ def normalize_flux(ion, wl, flux, ferr, redshift = 0, vmin = -150, vmax = 150):
     ferr /= med
     return flux, ferr
                         
-def lnlike(theta, x, y, yerr, sat_lim = 0.05):
-#    x0, amp, fwhml, fwhmg, x02, amp2, fwhml2, fwhmg2, lnf = theta
+def lnlike(theta, x, y, yerr, ion_props, sat_lim = 0.1):
     lnf = theta[-1]
-    model = voigt_fit(theta, x, y, yerr, sat_lim = sat_lim)
+    model = veeper_voigt_fit(x, theta, ion_props)
     inv_sigma2 = 1.0/(yerr**2 + model**2*np.exp(2*lnf))
-    return -0.5*(np.sum((y-model)**2*inv_sigma2 - np.log(inv_sigma2)))
+    return  -0.5*(np.sum((y-model)**2*inv_sigma2 - np.log(inv_sigma2)))
 
-def calc_prior(x0, amp, fwhml, fwhmg, lnf, vmin = -250, vmax = 250):
+def calc_prior(col, bval, x0, lnf, vmin = -250, vmax = 250):
     prior = -np.inf
-    if (vmin < x0 < vmax) and (0.0 <= amp    < 10.00) and (0.0 <= fwhml  < 250.0) \
-                          and (0.0 <= fwhmg  < 250.0) and (-10. < lnf    <=  1.0):
+    if (vmin < x0 < vmax) and (0 <  col < 22) and (0.0 <  bval < 250.0) and (-10. < lnf    <=  1.0):
         prior = 0.0
     return prior 
 
-def lnprior(theta, x, y, yerr, sig_lim = 2, sat_lim = 0.05,  vmin = -250, vmax = 250):
+def lnprior(theta):
     #todo don't need x, y, yerr or siglim in this
-    prior = calc_prior(theta[0], theta[1], theta[2], theta[3], theta[-1])
-    if len(theta) == 9:
-        prior += calc_prior(theta[4], theta[5], theta[6], theta[7], theta[-1])
+    prior = calc_prior(theta[0], theta[1], theta[2], theta[-1])
+    if len(theta) == 7:
+        prior += calc_prior(theta[3], theta[4], theta[5], theta[-1])
     return prior
 
-def lnprob(theta, x, y, yerr, sig_lim = 2, sat_lim = 0.05):
-    lp = lnprior(theta, x, y, yerr, sig_lim = sig_lim, sat_lim = sat_lim)
+def lnprob(theta, x, y, yerr, ion_props, sig_lim = 2, sat_lim = 0.1):
+    lp = lnprior(theta)
     if not np.isfinite(lp):
         return -np.inf
-    return lp + lnlike(theta, x, y, yerr, sat_lim = sat_lim)
+    return lp + lnlike(theta, x, y, yerr, ion_props, sat_lim = sat_lim)
 
 
 def set_rows_cols(num_plots):
@@ -138,56 +231,54 @@ def set_rows_cols(num_plots):
     return nrows, ncols
 
 
-def fit_single_voigt_profile(x, y, yerr, initial_guess, nwalkers = 100,\
-                                 niterations = 100, jump_size = 1e-2, corner_plot = False):
+def fit_single_voigt_profile(ion_props, x, y, yerr, initial_guess, nwalkers = 100,\
+                                 niterations = 100, jump_size = 1e-3, corner_plot = False):
 
     ndim  = len(initial_guess)
     pos = [initial_guess + jump_size*np.random.randn(ndim) for i in range(nwalkers)]
-    sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(x, y, yerr))
+    sampler = emcee.EnsembleSampler(nwalkers, ndim, lnprob, args=(x, y, yerr, ion_props))
     sampler.run_mcmc(pos, niterations)
-    samples = sampler.chain[:, int(nwalkers/2):, :].reshape((-1, ndim))
+    discard = int(nwalkers/2)
+    discard = 499
+    samples = sampler.chain[:, :, :].reshape((-1, ndim))
     samples[:, ndim-1] = np.exp(samples[:, ndim-1])
-    if ndim == 5:
-        w0_mcmc, amp_mcmc, fwhml_mcmc, fwhmg_mcmc, lnf_mcmc = map(lambda v: (v[1], v[2]-v[1], v[1]-v[0]),\
+    if ndim == 4:
+        col, bval, vel, lnf = map(lambda v: (v[1], v[2]-v[1], v[1]-v[0]),\
                             zip(*np.percentile(samples, [16, 50, 84], axis=0)))
-        result = [w0_mcmc, amp_mcmc, fwhml_mcmc, fwhmg_mcmc, lnf_mcmc]
-        theta = [result[0][0], result[1][0], result[2][0], result[3][0], result[4][0]]
-    elif ndim == 9:
-        w0_mcmc, amp_mcmc, fwhml_mcmc, fwhmg_mcmc, w02_mcmc, amp2_mcmc, \
-            fwhml2_mcmc, fwhmg2_mcmc, lnf_mcmc  = map(lambda v: (v[1], v[2]-v[1], v[1]-v[0]),\
+        result = [col, bval, vel, lnf]
+        theta = [result[0][0], result[1][0], result[2][0], result[3][0]]
+    elif ndim == 7:
+        col, bval, vel, col2, bval2, vel2, lnf  = map(lambda v: (v[1], v[2]-v[1], v[1]-v[0]),\
                             zip(*np.percentile(samples, [16, 50, 84], axis=0)))
-        result = [w0_mcmc, amp_mcmc, fwhml_mcmc, fwhmg_mcmc, w02_mcmc, amp2_mcmc, fwhml2_mcmc, fwhmg2_mcmc, lnf_mcmc]
+        result = [col, bval, vel, col2, bval2, vel2, lnf]
         theta = [result[0][0], result[1][0], result[2][0], \
                  result[3][0], result[4][0], result[5][0], \
-                 result[6][0], result[7][0], result[8][0]]
+                 result[6][0]]
     
     if corner_plot:
-        if len(initial_guess) == 5:
-            labels = ["$w0$", "$amp$", "fwhm_L", "fwhm_g", "$\ln\,f$"]
-        elif len(initial_guess) == 9:
-            labels = ["$w0$", "$amp$", "fwhm_L", "fwhm_g", "$w02$", "$amp2$", "fwhm_L2", "fwhm_g2","$\ln\,f$"]
+        if len(initial_guess) == 4:
+            labels = ["N", "bval","vel", "ln"]
+        if len(initial_guess) == 7:
+            labels = ["N", "bval","vel","N2", "bval2", "vel2",  "ln"]
         fig = corner.corner(samples, labels=labels, truths=theta)
         plt.savefig('mcmc_voigt_fit.png')
-
     return result
 
 
-def plot_ion_fit(ion, x, y, yerr, theta, initial_guess = None, color = 'red', label = None, ax = None, sat_lim = 0.05, linestyle = 'solid'):
+def plot_ion_fit(ion, wl, vel,  y, yerr, theta, ion_props, initial_guess = None, color = 'red', label = None, ax = None, sat_lim = 0.05, linestyle = 'solid'):
     if ax == None:
         fig, ax = plt.subplots(nrows=1, ncols=1)
-
     if initial_guess: 
-        model = voigt_fit(initial_guess, x, y, yerr, sat_lim = sat_lim)
-        ax.plot(x, model, label = 'first guess', color = 'black', linestyle = 'dashed', alpha = 0.6)
+        model = veeper_voigt_fit(wl, initial_guess, ion_props, z = 0.2)
+        ax.plot(vel, model, label = 'first guess', color = 'black', linestyle = 'dashed', alpha = 0.6)
 
-    model = voigt_fit(theta, x, y, yerr, sat_lim = sat_lim)
-    ax.plot(x,y, color = 'black', alpha = 0.2)
-    ax.errorbar(x,y,yerr, color = 'black', alpha = 0.1)
-    ax.plot(x, model, color = color, label = label, linestyle = linestyle, linewidth = 2.5, zorder= 10)
+    model = veeper_voigt_fit(wl, theta,ion_props,  z = 0.2)
+    ax.plot(vel,y, color = 'black', alpha = 0.2)
+    ax.errorbar(vel,y,yerr, color = 'black', alpha = 0.1)
+    ax.plot(vel, model, color = color, label = label, linestyle = linestyle, linewidth = 2.5, zorder= 10)
     ax.annotate(ion, xy=(-150, 0), fontsize = 12)
     ax.set_ylim(-0.1, 1.2)
-    ax.set_xlim(min(x), max(x))
-#    ax.legend()
+    ax.set_xlim(min(vel), max(vel))
 
 def plot_veeper_ion_fit(ion, model, orientation, radius, ax=None, time = 11.2, vmin = -300, \
                             vmax = 300, work_dir = '../../data/analyzed_spectra'):
@@ -205,12 +296,13 @@ def plot_veeper_ion_fit(ion, model, orientation, radius, ax=None, time = 11.2, v
 
     wl, flux, ferr = shf.load_spec_from_fits(fit)
 
-    vv_ion, flux_ion, ferr_ion = ion_velocity_range(ion, wl, flux, ferr, redshift = redshift, vmin=vmin, vmax = vmax)
+    wl_ion, vv_ion, flux_ion, ferr_ion = ion_velocity_range(ion, wl, flux, ferr, redshift = redshift, vmin=vmin, vmax = vmax)
+
     ax.plot(vv_ion, flux_ion, color = 'green',  alpha = 0.7, linewidth = 2.5, label = 'veeper')
     
 
 
-def voigt_fit(theta, x, y, yerr, sat_lim = 0.05):
+def voigt_fit(theta, x, y, yerr, sat_lim = 0.1):
     peak1 = Voigt1D(x_0=theta[0], amplitude_L=theta[1], fwhm_L=theta[2], fwhm_G=theta[3])(x)
     peak2 = np.zeros(len(peak1))
     if len(theta) > 5:
@@ -227,12 +319,13 @@ def ion_velocity_range(ion, wl, flux, fluxerr, redshift = 0, vmin = -200, vmax =
     w0 = shf.restwave(ion, redshift) # REST wavelength for rest-frame EW; observed wavelength for observed EW 
     vv = (wl-w0) / w0 * 2.9979e5
     mask = (vv > vmin) & (vv < vmax)
-    return vv[mask], flux[mask], fluxerr[mask]
+    wl = wl / (1+ redshift)
+    return wl[mask], vv[mask], flux[mask], fluxerr[mask]
 
 
  
 def fit_spectrum(model, orientation, radius, ion_list = [], time = 11.2, normalize = False, corner_plot = False, \
-                vmin=-150, vmax =150, nwalkers = 100, niterations = 100, save_fit = True, sat_lim = 0.05, sig_lim = 0.05, \
+                 vmin=-150, vmax =150, nwalkers = 100, niterations = 100, save_fit = True, sat_lim = 0.05, sig_lim = 0.05, \
                  work_dir = '../../data/analyzed_spectra', use_errors = True, plot_veeper = True):
 
     if time == 11.2:
@@ -271,40 +364,24 @@ lerr2 fwhm_g[10] gerr1 gerr2 lnf[13] lnferr1 lnferr2\n')
 
         if normalize:
             flux, ferr =  normalize_flux(ion, wl, flux, ferr, redshift = redshift, vmin = vmin, vmax = vmax)
-        vv_ion, flux_ion, ferr_ion = ion_velocity_range(ion, wl, flux, ferr, redshift = redshift, vmin=vmin, vmax = vmax)
-        initial_guess = guess_parameters(vv_ion, flux_ion, ferr_ion, sat_lim = sat_lim, sig_lim = sig_lim)
+        wl_ion, vv_ion, flux_ion, ferr_ion = ion_velocity_range(ion, wl, flux, ferr, redshift = redshift, vmin=vmin, vmax = vmax)
+        ion_props = find_ion_props(ion, redshift = redshift)
+        initial_guess = guess_parameters(wl_ion, flux_ion, ferr_ion, ion_props, sat_lim = sat_lim, sig_lim = sig_lim)
 
-        result = fit_single_voigt_profile(vv_ion, flux_ion, ferr_ion,  initial_guess, \
+        result = fit_single_voigt_profile(ion_props, wl_ion, flux_ion, ferr_ion,  initial_guess, \
                                                      corner_plot = corner_plot, niterations=niterations);
-       
-        if len(result) == 5:
-            theta = [result[0][0], result[1][0], result[2][0], \
-                 result[3][0], result[4][0]]
+        if len(result) == 4:
+            theta = [result[0][0], result[1][0], result[2][0], result[3][0]]
 
-        elif len(result) == 9:
+        elif len(result) == 7:
             theta = [result[0][0], result[1][0], result[2][0], \
                      result[3][0], result[4][0], result[5][0], \
-                     result[6][0], result[7][0], result[8][0]]    
+                     result[6][0]]    
 
-#        prob_single = lnprob(theta_single, vv_ion, flux_ion, ferr_ion)
-#        prob_double = lnprob(theta_double, vv_ion, flux_ion, ferr_ion)
-#        dL_single = result_single[2][2] - result_single[2][1]
-#        dL_double = result_double[2][2]- result_double[2][1]
-#        print(ion, prob_single, prob_double, theta_single[-1], theta_double[-1])
-#        print(ion, result_single[2][0], dL_single, result_double[2][0], dL_double)
-#        print(theta_single, theta_double)
-#        if prob_single > prob_double:
-#            theta = theta_single
-#            initial_guess = initial_guess_single
-#            result = result_single
-#        else:
-#            theta = theta_double
-#            initial_guess = initial_guess_double
-#            result = result_double
 
         if plot_veeper:
             plot_veeper_ion_fit(ion, model, orientation, radius, ax = ax, vmin = vmin, vmax = vmax)
-        plot_ion_fit(ion, vv_ion, flux_ion, ferr_ion, theta, initial_guess = initial_guess, sat_lim = sat_lim, \
+        plot_ion_fit(ion, wl_ion, vv_ion, flux_ion, ferr_ion, theta, ion_props, initial_guess = initial_guess, sat_lim = sat_lim, \
                          color = 'red', ax = ax, label = "mcmc fit" )
 
         vv_list.append(vv_ion)
@@ -316,8 +393,8 @@ lerr2 fwhm_g[10] gerr1 gerr2 lnf[13] lnferr1 lnferr2\n')
                               %(ion, result[0][0], result[0][1], result[0][2], \
                                     result[1][0], result[1][1], result[1][2],\
                                     result[2][0], result[2][1],result[2][2], \
-                                    result[3][0], result[3][1],result[3][2], \
-                                    result[4][0], result[4][1],result[4][2]))
+                                    result[3][0], result[3][1],result[3][2]))#, \
+                           #         result[4][0], result[4][1],result[4][2]))
         if row == nrows-1:
             ax.set_xlabel('Velocity (km/s)')
         if col == 0:
@@ -325,5 +402,5 @@ lerr2 fwhm_g[10] gerr1 gerr2 lnf[13] lnferr1 lnferr2\n')
         if i == 0:
             ax.legend(frameon = True)
            
-    plt.savefig('../../plots/mcmc/%s_%s_%ikpc.png'%(orientation, model, radius))
+#    plt.savefig('../../plots/mcmc/%s_%s_%ikpc.png'%(orientation, model, radius))
     return vv_list, flux_list, ferr_list, theta_list

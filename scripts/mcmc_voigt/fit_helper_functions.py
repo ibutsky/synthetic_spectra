@@ -83,7 +83,6 @@ def guess_parameters(vel, flux, fluxerr, sig_lim = 2, sat_lim = 0.05):
         theta = [vcent_peaks[0], amp_guess, fwhl_guess/2., fwhg_guess/2., \
                  vcent_peaks[1], amp_guess, fwhl_guess/2., fwhg_guess/2.,lnf_guess]
 
-
     return theta
 
 def normalize_flux(ion, wl, flux, ferr, redshift = 0, vmin = -150, vmax = 150):

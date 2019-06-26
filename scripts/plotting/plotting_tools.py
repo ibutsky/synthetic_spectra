@@ -31,10 +31,10 @@ def load_data(property_list, fn = None, use_filtered = True,
 
     return_array = []
     for prop in property_list:
-        return_array.append((data[prop].value)[mask])
+        return_array.append(np.array((data[prop].value)[mask]))
 
     data.close()
-    return return_array
+    return np.array(return_array)
 
 
 def apply_column_limits(flag, cols, colerrs, lims, limerrs):

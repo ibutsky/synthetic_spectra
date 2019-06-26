@@ -102,6 +102,8 @@ os.chdir(work_dir)
 spec_files = glob.glob('COS-FUV*')
 #spec_files = ['COS-FUV_face_anisd_11.2Gyr_r10kpc']
 for spec in spec_files:
+    if 'tempest' in spec or 'P0' in spec:
+        continue
     orientation, model = np.loadtxt('%s/info.txt'%(spec), skiprows = 1, unpack = False, usecols = (0, 1), dtype = str)
     time, redshift, impact = np.loadtxt('%s/info.txt'%(spec), skiprows = 1, unpack = True, usecols = (2, 3, 4))
 
@@ -134,11 +136,9 @@ for spec in spec_files:
         for rw in all_restwaves:
             ncopies = 1
             index = (veeper_ions == ion) & (restwaves == rw)
- #           print('veeper', veeper_ions[index], cols[index], sigcols[index])
             if ion in veeper_ions and len(veeper_ions[index]) > 0:
                 if len(veeper_ions[index]) > 1:
                     ncopies += len(veeper_ions[index]) - 1
- #                   print(ncopies)
                 restwave_list = np.append(restwave_list,   ncopies*[rw])
                 ion_list      = np.append(ion_list,       ncopies*[ion])
                 col_list      = np.append(col_list,         cols[index])
@@ -162,7 +162,6 @@ for spec in spec_files:
 
             
             json_index = (json_ions == ion) & (json_restwaves == rw)
-#            print('json:', json_ions[json_index], json_col[json_index], json_colerr[json_index])
 
             if ion in json_ions and len(json_ions[json_index]) > 0:
                 if len(json_ions[json_index]) > ncopies:
@@ -186,7 +185,6 @@ for spec in spec_files:
                 coljson_list    = np.append(coljson_list,    ncopies*[dummy])
                 sigcoljson_list = np.append(sigcoljson_list, ncopies*[dummy])
 
-  #          print(len(col_list), len(coljson_list))
                 
             impact_list      = np.append(impact_list,           ncopies*[impact])
             model_list       = np.append(model_list,             ncopies*[model])

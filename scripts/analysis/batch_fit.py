@@ -11,35 +11,41 @@ def veeper_fit(view, model, time, r, working_dir = '../../data/analyzed_spectra/
         if os.path.isfile('compiledVPoutputs.dat'):
             print('Veeper batch fit already run for %s'%(basename))
         else:
+            hack = False
             num_lines = sum(1 for line in open('flist'))
-            if num_lines <= 1:
-                hack = True
-            else:
-                hack = False
-            VPmeasure.batch_fit('%s_ibnorm.fits'%(basename), \
+            if num_lines > 0:
+                if num_lines == 1:
+                    hack = True
+                VPmeasure.batch_fit('%s_ibnorm.fits'%(basename), \
                                     'flist', hack=hack)
         os.chdir('../')
     else:
-        print('No folder: %s'%(fpath))
+        print('No folder: %s'%(basename))
     os.chdir(current_dir)
 
 
-view =  'edge_theta1.5'
-view = 'face'
+view =  'edge_theta1.0'
+#view = 'face'
 model = 'anisd'
 time = 11.2
 impacts = np.arange(10,  110, 10)
-impacts = [20]
-for impact in impacts:
-    veeper_fit(view, model, time, impact)
+impacts = [40]
+#for impact in impacts:
+ #   veeper_fit(view, model, time, impact)
 
-#views = ['face', 'edge_theta0', 'edge_theta1.0', 'edge_theta1.5']
-#models = ['anisd', 'stream']
-#impacts = np.arange(10, 210, 10)
-#time = 11.2
+views = ['face', 'edge_theta0', 'edge_theta1.0', 'edge_theta1.5']
+models = ['anisd', 'stream']
+impacts = np.arange(10, 210, 10)
+time = 11.2
 
-#for view in views:
-#    for model in models:
-#        for impact in impacts:
-#            print(view, model, impact)
-#            veeper_fit(view, model, time, impact)
+views = ['edge_theta1.0']
+models = ['anisd']
+impacts = [40]
+
+temp = open('temp.dat', 'w')
+for view in views:
+    for model in models:
+        for impact in impacts:
+            temp.write('%s, %s, %i\n'%(view, model, impact))
+            temp.flush()
+            veeper_fit(view, model, time, impact)

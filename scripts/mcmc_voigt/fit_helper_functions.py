@@ -1,6 +1,7 @@
 import numpy as np
 import emcee
 import sys
+import os
 from astropy.modeling.models import Voigt1D
 import corner
 import matplotlib.pylab as plt
@@ -76,6 +77,9 @@ def veeper_voigt_fit(waves, theta, ion_props, z = 0, sat_lim = 0.1):
         peak2 = 1 - single_voigt_fit(waves, theta[3], theta[4], theta[5], ion_props)
         model = 1 - (peak1 + peak2)
 
+    sat = model < sat_lim
+    model[sat] = np.mean(sat_lim)
+
     return model
 
 def single_voigt_fit(waves, coldens, bval, vels, ion_props, z = 0, sat_lim = 0.1):
@@ -92,15 +96,12 @@ def single_voigt_fit(waves, coldens, bval, vels, ion_props, z = 0, sat_lim = 0.1
     tautot+=tauval
     model =  np.exp(-tautot)
 
-    sat = model < sat_lim
-    model[sat] = np.mean(sat_lim)
-
     return model
 
 def deriv(x):
     return np.diff(np.append(x, x[-1]))
 
-def smooth(x, window_len = 30, window = 'blackman'):
+def smooth(x, window_len = 15, window = 'blackman'):
     if x.ndim != 1:
         print("smooth only accepts 1 dimension arrays.")
     if x.size < window_len:
@@ -121,13 +122,23 @@ def smooth(x, window_len = 30, window = 'blackman'):
     return y[window_len-1:-window_len+1] 
 
 
-def find_num_peaks(vv_ion, flux_ion, vcent = 0, width = 100, window_len = 30, window = 'blackman'):    
+def find_num_peaks(vv_ion, flux_ion, vcent = 0, width = 100, window_len = 15, window = 'blackman'):    
     # Finds the number of peaks in the absorption spectrum to decide wether to fit one line or two
     fsmooth = smooth(flux_ion, window_len = window_len, window = window)
+    inv_fsmooth = 1 / fsmooth
     vsmooth = smooth(vv_ion, window_len = window_len, window = window)
-    peaks = signal.find_peaks(1/fsmooth, height = 1.1)[0]
+    peaks = signal.find_peaks(inv_fsmooth, height = 1.1, distance = 15)[0]
 
-    return vsmooth[peaks]
+
+    ordered = np.argsort(fsmooth[peaks])
+    inv_fsmooth = inv_fsmooth[peaks][ordered]
+    vsmooth     =     vsmooth[peaks][ordered]
+    
+    max_peak = inv_fsmooth[-1]
+    max_peak_vel = vsmooth[-1]
+    major_peaks = (inv_fsmooth - 1 > 0.07 * max_peak) & (np.abs(vsmooth - max_peak_vel) < 150)
+    print("hey", vsmooth[major_peaks], inv_fsmooth[major_peaks])
+    return vsmooth[major_peaks]
 
 def calc_eqw(vel, flux, fluxerr):
     dwave = deriv(vel)
@@ -138,8 +149,9 @@ def calc_eqw(vel, flux, fluxerr):
     return eqw, eqw_err
 
 def guess_parameters(waves, flux, fluxerr, ion_props, sig_lim = 2, sat_lim = 0.1):
-    w0 = np.median(waves)
+    w0 = ion_props[0]
     vel = (waves - w0) / w0*2.997e5
+
     amp_guess = 1.0 - np.min(flux)
     if amp_guess < 0:
         col_guess = 0
@@ -171,13 +183,12 @@ def guess_parameters(waves, flux, fluxerr, ion_props, sig_lim = 2, sat_lim = 0.1
         vcent = vcent_peaks[0]
 
     theta = [col_guess, bval_guess, vcent, lnf_guess]
-
+    
     if len(vcent_peaks) > 1:
         vcent2 = vcent_peaks[1]
         bval_guess= np.abs(vcent2 - vcent)/2
         theta = [col_guess + 1, bval_guess, vcent,\
                  col_guess + 1, bval_guess, vcent2, lnf_guess]
-    print(theta)    
     return theta
 
 def normalize_flux(ion, wl, flux, ferr, redshift = 0, vmin = -150, vmax = 150):
@@ -293,12 +304,10 @@ def plot_veeper_ion_fit(ion, model, orientation, radius, ax=None, time = 11.2, v
 
     base = shf.spec_base_filename(orientation, model, time, radius)
     fit = '%s/%s/FitInspection.fits'%(work_dir,base)
-
-    wl, flux, ferr = shf.load_spec_from_fits(fit)
-
-    wl_ion, vv_ion, flux_ion, ferr_ion = ion_velocity_range(ion, wl, flux, ferr, redshift = redshift, vmin=vmin, vmax = vmax)
-
-    ax.plot(vv_ion, flux_ion, color = 'green',  alpha = 0.7, linewidth = 2.5, label = 'veeper')
+    if os.path.isfile(fit):
+        wl, flux, ferr = shf.load_spec_from_fits(fit)
+        wl_ion, vv_ion, flux_ion, ferr_ion = ion_velocity_range(ion, wl, flux, ferr, redshift = redshift, vmin=vmin, vmax = vmax)
+        ax.plot(vv_ion, flux_ion, color = 'green',  alpha = 0.7, linewidth = 2.5, label = 'veeper')
     
 
 
@@ -336,13 +345,10 @@ def fit_spectrum(model, orientation, radius, ion_list = [], time = 11.2, normali
 
     base = shf.spec_base_filename(orientation, model, time, radius)
     wl, flux, ferr = shf.load_spec_from_fits('%s/%s/%s_ibnorm.fits'%(work_dir,base, base))
-    if not use_errors:
-        ferr = np.zeros(len(flux))
 
     if save_fit:
         outfile = open('%s/%s/mcmc_fit.dat'%(work_dir, base), 'w')
-        outfile.write('ion_name v_center[1] verr1 verr2 amp[4] amperr1 amperr2 fwhm_l[7] lerr1 \
-lerr2 fwhm_g[10] gerr1 gerr2 lnf[13] lnferr1 lnferr2\n')
+        outfile.write('ion_name restwave log(N) log(N)_err1  log(N)_err2  bval  bval_err1 bval_err2 v_center[1] v_err1 v_err2 lnf lnf_err1 lnf_err2\n')
     # plotting is temporary
     ncols = int(len(ion_list) / 2)
     nrows, ncols = set_rows_cols(len(ion_list))
@@ -365,10 +371,15 @@ lerr2 fwhm_g[10] gerr1 gerr2 lnf[13] lnferr1 lnferr2\n')
         if normalize:
             flux, ferr =  normalize_flux(ion, wl, flux, ferr, redshift = redshift, vmin = vmin, vmax = vmax)
         wl_ion, vv_ion, flux_ion, ferr_ion = ion_velocity_range(ion, wl, flux, ferr, redshift = redshift, vmin=vmin, vmax = vmax)
-        ion_props = find_ion_props(ion, redshift = redshift)
-        initial_guess = guess_parameters(wl_ion, flux_ion, ferr_ion, ion_props, sat_lim = sat_lim, sig_lim = sig_lim)
+        if use_errors:
+            ferr_to_use = ferr_ion
+        else:
+            ferr_to_use = np.zeros(len(ferr_ion))
 
-        result = fit_single_voigt_profile(ion_props, wl_ion, flux_ion, ferr_ion,  initial_guess, \
+        ion_props = find_ion_props(ion, redshift = redshift)
+        initial_guess = guess_parameters(wl_ion, flux_ion, ferr_to_use, ion_props, sat_lim = sat_lim, sig_lim = sig_lim)
+
+        result = fit_single_voigt_profile(ion_props, wl_ion, flux_ion, ferr_to_use,  initial_guess, \
                                                      corner_plot = corner_plot, niterations=niterations);
         if len(result) == 4:
             theta = [result[0][0], result[1][0], result[2][0], result[3][0]]
@@ -388,13 +399,19 @@ lerr2 fwhm_g[10] gerr1 gerr2 lnf[13] lnferr1 lnferr2\n')
         flux_list.append(flux_ion)
         ferr_list.append(ferr_ion)
         theta_list.append(theta)
+        restwave, gamma, fosc = find_ion_props(ion)
         if save_fit:
-            outfile.write('%s %e %e %e %e %e %e %e %e %e %e %e %e %e %e %e\n'\
-                              %(ion, result[0][0], result[0][1], result[0][2], \
+            outfile.write('%s %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f \n'\
+                              %(ion, restwave, result[0][0], result[0][1], result[0][2], \
                                     result[1][0], result[1][1], result[1][2],\
                                     result[2][0], result[2][1],result[2][2], \
-                                    result[3][0], result[3][1],result[3][2]))#, \
-                           #         result[4][0], result[4][1],result[4][2]))
+                                    result[-1][0], result[-1][1],result[-1][2]))
+            if len(theta) == 7:
+                outfile.write('%s %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f %.2f \n'\
+                              %(ion, restwave, result[3][0], result[3][1], result[3][2], \
+                                    result[4][0], result[4][1], result[4][2],\
+                                    result[5][0], result[5][1],result[5][2], \
+                                    result[-1][0], result[-1][1],result[-1][2]))
         if row == nrows-1:
             ax.set_xlabel('Velocity (km/s)')
         if col == 0:

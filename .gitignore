@@ -3,3 +3,7 @@ data/unanalyzed_spectra/*.h5
 estd.*
 *.e6*
 *.o6*
+
+*.bw.*
+*~
+*_pycache_*

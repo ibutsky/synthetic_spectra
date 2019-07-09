@@ -63,13 +63,12 @@ def make_random_spectrum(model, output, spectrum_directory = '.', \
    
 # here's how to actually call this:
 ion_list = ['H I', 'O VI', 'C II', 'C III', 'C IV', 'Si II', 'Si III', 'Si IV', 'N V']
-sd = '/projects/eot/bafa/data/spectra/tempest'
 
 sd = '../../data/unanalyzed_spectra'
-model = 'P0'
-output = 3456
+model = 'tempest'
+output = 524
 
 for i in range(15):
-    make_random_spectrum(model, 3456, ion_list = ion_list, spectrum_directory = sd)
+    make_random_spectrum(model, output, ion_list = ion_list, spectrum_directory = sd)
 
 

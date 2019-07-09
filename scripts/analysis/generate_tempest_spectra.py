@@ -52,7 +52,7 @@ def make_random_spectrum(model, output, spectrum_directory = '.', \
             
 
     # stitch the spectra together in the format you'll need for veeper
-    spec_name = '%s/COS-FUV_%s_z%.2f_r%i.fits'%(spectrum_directory, model, redshift, int(ray_id))
+    spec_name = '%s/COS-FUV_%s_z%.2f_%i.fits'%(spectrum_directory, model, redshift, int(ray_id))
     sp.stitch_g130m_g160m_spectra('COS-G130M.fits', 'COS-G160M.fits', spec_name)
     os.remove('COS-G130M.fits')
     os.remove('COS-G160M.fits')
@@ -65,6 +65,11 @@ def make_random_spectrum(model, output, spectrum_directory = '.', \
 ion_list = ['H I', 'O VI', 'C II', 'C III', 'C IV', 'Si II', 'Si III', 'Si IV']
 sd = '/projects/eot/bafa/data/spectra/tempest'
 
-make_random_spectrum('tempest', 524, ion_list = ion_list, spectrum_directory = sd)
+sd = '../../data/unanalyzed_spectra'
+model = 'P0'
+output = 3456
+
+for i in range(15):
+    make_random_spectrum(model, 3456, ion_list = ion_list, spectrum_directory = sd)
 
 

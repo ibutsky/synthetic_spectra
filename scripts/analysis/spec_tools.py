@@ -2,7 +2,6 @@ from astropy.io import fits
 import numpy as np
 import os
 import sys
-import ytree
 import yt
 
 def rotate(v, phi, theta):
@@ -65,6 +64,8 @@ def get_rockstar_data(rstar_fn, halo_id):
     Use ytree to get all of the halo centroids, virial radii, and redshift info; store in a dict
     """
     # load up dataset and get appropriate TreeNode
+    import ytree 
+
     a = ytree.load(rstar_fn)
     t = a[a["Orig_halo_ID"] == halo_id][0]
 
@@ -144,6 +145,14 @@ def load_simulation_properties(model, output):
             print('WARNING: No rockstar file for output %i'%(output))
             ad = ds.all_data()
             # TODO 
+    elif model == 'P0':
+        fn = '/nobackup/ibutsky/tmp/pioneer.003456'
+        ds = yt.load(fn)
+        v, cen = ds.h.find_max(("gas", "density"))
+        gcenter = cen.d
+
+        sp = ds.sphere(cen, (500, 'kpc'))
+        bv = sp.quantities.bulk_velocity().in_units('km/s')
     return ds, gcenter, bv
             
 

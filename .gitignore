@@ -1,0 +1,5 @@
+*.fits
+data/unanalyzed_spectra/*.h5
+estd.*
+*.e6*
+*.o6*

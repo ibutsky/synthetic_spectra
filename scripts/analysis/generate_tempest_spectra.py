@@ -24,8 +24,8 @@ def make_random_spectrum(model, output, spectrum_directory = '.', \
     
     impact_parameter, ray_start, ray_end = sp.generate_random_ray_coordinates(gcenter, rmin*kpc_unit, rmax*kpc_unit, ray_len*kpc_unit)
 
-    ray_id = sp.get_next_ray_id(model, output, spectrum_directory = spectrum_directory)
-    ray_outfile = open('%s/%s_%s_ray_data.dat'%(spectrum_directory, model, output), 'a')
+    ray_id, ray_fn = sp.get_next_ray_id(model, redshift, spectrum_directory = spectrum_directory)
+    ray_outfile = open(ray_fn, 'a')
     ray_outfile.write('%i %.2f %.2f %.2f %.2f %e %e %e %e %e %e %e %e %e\n'%(ray_id, impact_parameter*ikpc_unit, \
                 bulk_velocity[0].in_units('km/s').d, bulk_velocity[1].in_units('km/s').d, bulk_velocity[2].in_units('km/s').d,\
                       ray_start[0]*ikpc_unit, ray_start[1]*ikpc_unit, ray_start[2]*ikpc_unit, \
@@ -62,7 +62,7 @@ def make_random_spectrum(model, output, spectrum_directory = '.', \
          
    
 # here's how to actually call this:
-ion_list = ['H I', 'O VI', 'C II', 'C III', 'C IV', 'Si II', 'Si III', 'Si IV']
+ion_list = ['H I', 'O VI', 'C II', 'C III', 'C IV', 'Si II', 'Si III', 'Si IV', 'N V']
 sd = '/projects/eot/bafa/data/spectra/tempest'
 
 sd = '../../data/unanalyzed_spectra'

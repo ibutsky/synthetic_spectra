@@ -156,12 +156,13 @@ def load_simulation_properties(model, output):
     return ds, gcenter, bv
             
 
-def get_next_ray_id(model, output, spectrum_directory = '.'):
-    fn = '%s/%s_%s_ray_data.dat'%(spectrum_directory, model, output)
+def get_next_ray_id(model, redshift, spectrum_directory = '.'):
+    fn = '%s/%s_z%0.2f_ray_data.dat'%(spectrum_directory, model, redshift)
     if os.path.isfile(fn):
         ray_id_list = np.loadtxt(fn, unpack=True, skiprows=1, usecols=0)
-        sys.stdout.flush()
-        if ray_id_list.size == 1:
+        if ray_id_list.size == 0:
+            next_ray_id = 0
+        elif ray_id_list.size == 1:
             next_ray_id = 1
         else:
             next_ray_id = ray_id_list[-1] + 1
@@ -171,4 +172,4 @@ def get_next_ray_id(model, output, spectrum_directory = '.'):
         outfile.close()
         next_ray_id = 0
 
-    return next_ray_id
+    return next_ray_id, fn

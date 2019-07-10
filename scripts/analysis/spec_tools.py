@@ -173,3 +173,5 @@ def get_next_ray_id(model, redshift, spectrum_directory = '.'):
         next_ray_id = 0
 
     return next_ray_id, fn
+
+

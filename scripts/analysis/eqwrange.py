@@ -281,3 +281,28 @@ def json_eqw(json_file, fits_file, outfile):
 
 
 		
+
+def load_veeper_fit(veeper_fn):
+	if os.path.isfile(veeper_fn):
+		restwaves, cols, sigcols, bvals, sigbvals, vels, sigvels = \
+		    np.loadtxt(veeper_fn, unpack=True, skiprows = 1, usecols = (1,3,4,5,6,7,8), delimiter = '|')
+		veeper_ions = np.loadtxt(veeper_fn, unpack=True, skiprows = 1, \
+						 usecols = (19), dtype = 'str', delimiter = '|')
+		for i in range(len(veeper_ions)):
+			temp    = veeper_ions[i]
+			veeper_ions[i] = temp.replace(" ", "")
+
+		if sigcols.size > 1:
+			mask = sigcols > 0
+			veeper_ions = veeper_ions[mask]
+			restwaves = restwaves[mask]
+			cols = cols[mask]
+			sigcols = sigcols[mask]
+			bvals = bvals[mask]
+			sigbvals = sigbvals[mask]
+			vels = vels[mask]
+			sigvels = sigvels[mask]
+	else:
+                restwaves = []; cols = []; sigcols = []; bvals = []; sigbvals = [];
+                vels      = []; sigvels = []; flags = []; veeper_ions = [];
+	return veeper_ions, restwaves, cols, sigcols, bvals, sigbvals, vels, sigvels

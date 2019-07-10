@@ -5,5 +5,20 @@ estd.*
 *.o6*
 
 *.bw.*
+
+plots/
+old/
+pro/
+ColloquiumPlots/
+
+
+*.h5
+*.DS_Store
 *~
-*_pycache_*
+*#
+#.png
+
+*.ipynb_checkpoints*
+
+*pycache*
+

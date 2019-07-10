@@ -8,7 +8,8 @@ import plotting_tools as pt
 def calculate_mean_err(data, err, use_log = False):
 
     # get rid of isnan error values
-    mask = (~np.isnan(err)) 
+#    mask = (~np.isnan(err)) 
+    mask = err > 0
     err = err[mask]
     data = data[mask]
 
@@ -26,28 +27,37 @@ def best_measurement(veeper_col_list, veeper_colerr_list, aodm_col_list, aodm_co
                          json_col_list, json_colerr_list, flag_list, \
                          vel_list, vel_err_list, bval_list, bval_err_list):
 
-    col = -9999.
-    colerr = 0.
-    vel = -9999.
-    velerr = 0.
-    bval = -9999.
-    bvalerr = 0.
-    flag = -9999.
+    col = [-9999.]
+    colerr = [0.]
+    vel = [-9999.]
+    velerr = [0.]
+    bval = [-9999.]
+    bvalerr = [0.]
+    flag = [-9999.]
 
     # first see if there are any good detections       
     detected = (flag_list == 1) & (veeper_col_list > -9999)
     sat      = (flag_list == 9) 
     uplim    = (flag_list == 5)
     if len(veeper_col_list[detected]) > 0:
-        json_mask = detected & (json_col_list > -9999)
-        aodm_mask = detected & (aodm_col_list > -9999)
-        temp_col = np.append(veeper_col_list[detected], 
-                                   [aodm_col_list[aodm_mask], 
-                                   json_col_list[json_mask]])
-        temp_col_err = np.append(veeper_colerr_list[detected], 
-                                      [aodm_colerr_list[aodm_mask],
-                                      json_colerr_list[json_mask]])
-        col, colerr = calculate_mean_err(temp_col, temp_col_err, use_log = True)
+        col    = veeper_col_list[detected]
+        colerr = veeper_colerr_list[detected]
+        vel    = vel_list[detected]
+        velerr = vel_err_list[detected]
+        bval   = bval_list[detected]
+        bvalerr = bval_err_list[detected]
+        flag   = flag_list[detected]
+
+#
+#        json_mask = detected & (json_col_list > -9999)
+#        aodm_mask = detected & (aodm_col_list > -9999)
+#        temp_col = np.append(veeper_col_list[detected], 
+#                                   [aodm_col_list[aodm_mask], 
+#                                   json_col_list[json_mask]])
+#        temp_col_err = np.append(veeper_colerr_list[detected], 
+#                                      [aodm_colerr_list[aodm_mask],
+#                                      json_colerr_list[json_mask]])
+#        col, colerr = calculate_mean_err(temp_col, temp_col_err, use_log = True)
             
             #inds    = veeper_colerr_list[detected].argsort()
             #col     = veeper_col_list[detected][inds][0]
@@ -57,36 +67,36 @@ def best_measurement(veeper_col_list, veeper_colerr_list, aodm_col_list, aodm_co
 #            velerr  =  vel_err_list[detected][0]
 #            bval    =     bval_list[detected][0]
 #            bvalerr = bval_err_list[detected][0]
-        vel, velerr = calculate_mean_err(vel_list[detected], vel_err_list[detected])
-        bval, bvalerr = calculate_mean_err(bval_list[detected], bval_err_list[detected])
-        flag = 1
+#        vel, velerr = calculate_mean_err(vel_list[detected], vel_err_list[detected])
+#        bval, bvalerr = calculate_mean_err(bval_list[detected], bval_err_list[detected])
+#        flag = 1
 
     elif len(veeper_col_list[sat])  > 0:
         inds = aodm_col_list[sat].argsort()
         col    =    aodm_col_list[sat][inds][0]
-        col    =    np.min(np.append(aodm_col_list[sat], json_col_list[sat]))
-        colerr =    0. #aodm_colerr_list[sat][inds][0]
+        col    =    [np.min(np.append(aodm_col_list[sat], json_col_list[sat]))]
+        colerr =    [0.] #aodm_colerr_list[sat][inds][0]
 
-        vel     =      vel_list[sat][0]
-        velerr  =  vel_err_list[sat][0]
-        bval    =     bval_list[sat][0]
-        bvalerr = bval_err_list[sat][0]
+        vel     =      [vel_list[sat][0]]
+        velerr  =  [vel_err_list[sat][0]]
+        bval    =    [ bval_list[sat][0]]
+        bvalerr = [bval_err_list[sat][0]]
 
-        vel, velerr= calculate_mean_err(vel_list[sat], vel_err_list[sat])
-        bval, bvalerr = calculate_mean_err(bval_list[sat], bval_err_list[sat])
+        #vel, velerr= calculate_mean_err(vel_list[sat], vel_err_list[sat])
+        #bval, bvalerr = calculate_mean_err(bval_list[sat], bval_err_list[sat])
 
-        flag = 9
+        flag = [9]
 
     elif len(veeper_col_list[uplim]) > 0:
-        col    =    np.max(np.append(aodm_col_list[uplim], json_col_list[uplim]))
-        colerr =    0; #aodm_colerr_list[uplim][inds][-1]
+        col    =    [np.max(np.append(aodm_col_list[uplim], json_col_list[uplim]))]
+        colerr =    [0.] #aodm_colerr_list[uplim][inds][-1]
 
-        vel     = -9999.
-        velerr  = 0.
-        bval    = -9999.
-        bvalerr = 0.
+        vel     =[ -9999.]
+        velerr  = [0.]
+        bval    = [-9999.]
+        bvalerr = [0.]
 
-        flag = 5
+        flag = [5]
         
 
     return col, colerr, vel, velerr, bval, bvalerr, flag
@@ -115,9 +125,6 @@ impacts = np.arange(10, 110, 10)
 times = [11.2]
 redshifts = [0.2]
 ions = ['HI', 'OVI', 'CII', 'CIII', 'SiII', 'SiIII', 'SiIV',  'NIII', 'NV']
-#ions = ['SiIII']
-#models = ['stream']
-#views = ['edge_theta1.0']
 for view in views:
     for model in models:
         for impact in impacts:
@@ -132,23 +139,23 @@ for view in views:
                             json_colerrs[mask], aodm_flags[mask], vels[mask], \
                             velerrs[mask], bvals[mask], bvalerrs[mask])
                       
-                        if col > 0:
-                            orientation_list.append( view)
-                            model_list.append(      model)
-                            time_list.append(        time)
-                            redshift_list.append(redshift)
-                            impact_list.append(    impact)
-                            ion_name_list.append(     ion)
-
-                            col_list.append(       col)
-                            sigcol_list.append( colerr)
-                            vel_list.append(       vel)
-                            sigvel_list.append( velerr)
-                            bval_list.append(     bval)
-                            sigbval_list.append(bvalerr)
-                            flag_list.append( use_flag)
+                        if col[0] > 0:
+                            col_list      = np.append(col_list, col)
+                            sigcol_list   = np.append(sigcol_list, colerr)
+                            vel_list      = np.append(vel_list, vel)
+                            sigvel_list   = np.append(sigvel_list, velerr)
+                            bval_list     = np.append(bval_list, bval)
+                            sigbval_list  = np.append(sigbval_list, bvalerr)
+                            flag_list     = np.append(flag_list, use_flag)
                      
+                            num = len(col)
                     
+                            orientation_list = np.append(orientation_list, num*[view])
+                            model_list       = np.append(model_list,  num*[model])
+                            time_list        = np.append(time_list,  num*[time])
+                            redshift_list    = np.append(redshift_list,  num*[redshift])
+                            impact_list      = np.append(impact_list,  num*[impact])
+                            ion_name_list    = np.append(ion_name_list,  num*[ion])                    
 
 
 
@@ -158,6 +165,7 @@ dataset_names = ['impact', 'time', 'redshift', 'col', 'colerr', 'bval', 'bvalerr
 datasets = [impact_list, time_list, redshift_list, col_list, sigcol_list, bval_list, sigbval_list, vel_list, sigvel_list,flag_list]
 # first save the numerical data   
 for dset, data in zip(dataset_names, datasets):
+    data = data.astype('float64')
     spec_outfile.create_dataset(dset, data = data)
 
 

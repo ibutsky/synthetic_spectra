@@ -56,7 +56,7 @@ def plot_details(xfield, yfield):
         ylims = (1e12, 1e16)
         ylabel = 'Ion Column Density (cm$^{-2}$)'
     elif yfield == 'vel':
-        ylims  = (-59, 59)
+        ylims  = (-210, 210)
         ylabel = 'Velocity Offset (km / s)'
     elif yfield == 'bval':
         ylims  = (0.1, 79)

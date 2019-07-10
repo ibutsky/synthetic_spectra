@@ -10,100 +10,31 @@ import h5py as h5
 import eqwrange as eqw
 import spec_helper_functions as shf
 
-
-def best_measurement(veeper_col, veeper_colerr, aodm_col, aodm_colerr, flag, \
-                         vel, vel_err, bval, bval_err):
-
-    col_list = []; colerr_list = [], vel_list = []; vel_errlist = [];\
-    bval_list = []; bvalerr_list = []; flag_list = []
-    # first see if there are any good detections
-    detected = (flag == 1) & (veeper_colerr > 0)
-    sat      = (flag == 9)
-    uplim    = (flag == 5)
-    if len(veeper_col[detected]) > 0:
-        if len(veeper_col[detected]) > 1:
-            inds    = veeper_colerr[detected].argsort()            
-            col_list.append(       veeper_col[detected][inds][0])
-            colerrr_list.append(veeper_colerr[detected][inds][0])
-            
-            vel_list.append(       vel[detected][0])
-            velerr_list.append(vel_err[detected][0])
-            bval_list.append(       bval[detected][0])
-            bvalerr_list.append(bval_err[detected][0])
-
-        else:
-            col_list.append(      veeper_col[detected])
-            colerr_list.append(veeper_colerr[detected])
-
-            vel_list.append(         vel[detected])
-            velerr_list.append(  vel_err[detected])
-            bval_list.append(       bval[detected])
-            bvalerr_list.append(bval_err[detected])
-        
-        flag_list.append(1)
-
-    elif len(veeper_col[sat]) > 0:
-        if len(veeper_col[sat]) > 1:
-            inds = aodm_col[sat].argsort()
-            col_list.append(aodm_col[sat][inds][0])
-            colerr_list.append(aodm_err[sat][inds][0])
-            
-            vel_list.append(       vel[sat][0])
-            velerr_list.append(vel_err[sat][0])
-            bval_list.append(       bval[sat][0])
-            bvalerr_list.append(bval_err[sat][0])
-        else:
-            col_list.append(aodm_col[sat])
-            colerr_list.append(aodm_err[sat])
-
-            vel_list.append(       vel[sat])
-            velerr_list.append(vel_err[sat])
-            bval_list.append(       bval[sat])
-            bvalerr_list.append(bval_err[sat])
-        flag_list.append(9)
-
-    elif len(veeper_col[uplim]) > 0:
-        if len(veeper_col[uplim]) > 1:
-            inds = aodm_col[uplim].argsort()
-            col_list.append(    aodm_col[uplim][inds][0])
-            colerr_list.append(aodm_colerr[sat][inds][0])
-
-        else:
-            col_list.append(      aodm_col[uplim])
-            colerr_list.append(aodm_colerr[uplim])
-
-
-        vel_list.append(-9999)
-        velerr_list.append(-9999)
-        bval_list.append(-9999)
-        bvalerr_list.append(-9999)
-        
-        flag_list.append(5)
-
-    return col_list, colerr_list, vel_list, velerr_list, bval_list, bvalerr_list, flag_list
-
 master_ion_list = ['HI', 'OVI', 'CII', 'CIII', 'SiII', 'SiIII', 'SiIV',  'NIII', 'NV']
-#restwave_list = [1215.67, 1031.9261, 1037.0182, 1334.5323
 
 work_dir = '../../data/analyzed_spectra'
 spec_outfile = h5.File('%s/combined_spectra.h5'%(work_dir), 'w')
 
-
-orientation_list = [];      model_list = [];   time_list = [];  redshift_list = []; 
-impact_list      = [];   restwave_list = [];    ion_list = [];       col_list = []; 
-sigcol_list      = [];       bval_list = [];    vel_list = [];   sigbval_list = []; 
-sigvel_list      = [];       flag_list = []; flag_aodm_list = []; 
+orientation_list = [];      model_list = [];   redshift_list = [];   impact_list = [];  
+col_list         = [];     sigcol_list = [];       bval_list = [];  sigbval_list = [];
+vel_list         = [];     sigvel_list = [];        ion_list = [];
 eqw_list         = [];     sigeqw_list = [];  lncol_list = [];  siglncol_list = []; 
 velcent_list     = [];   velwidth_list = []; ewjson_list = []; sigewjson_list = []; 
-coljson_list     = []; sigcoljson_list = [];
+coljson_list     = []; sigcoljson_list = []; restwave_list = []; time_list = []; flag_aodm_list = [];
 
-# looping through all of the analyzed spectra
+
+# go to the directory where the analyzed spectra reside
 os.chdir(work_dir)
+
 spec_files = glob.glob('COS-FUV*')
-#spec_files = ['COS-FUV_face_anisd_11.2Gyr_r10kpc']
 for spec in spec_files:
+    print(spec)
+    
+    dummy = -9999.
+    # for now, ignore tempest and P0 synthetic spectra
     if 'tempest' in spec or 'P0' in spec:
         continue
+
     orientation, model = np.loadtxt('%s/info.txt'%(spec), skiprows = 1, unpack = False, usecols = (0, 1), dtype = str)
     time, redshift, impact = np.loadtxt('%s/info.txt'%(spec), skiprows = 1, unpack = True, usecols = (2, 3, 4))
 
@@ -115,39 +46,29 @@ for spec in spec_files:
     if not os.path.isdir(aodm_plot_dir):
         os.mkdir(aodm_plot_dir)
 
-    if os.path.isfile(veeper_fn):
-        restwaves, cols, sigcols, bvals, sigbvals, vels, sigvels, flags = np.loadtxt(veeper_fn, unpack=True, skiprows = 1, \
-                    usecols = (1,3,4,5,6,7,8, 9), delimiter = '|')
-        veeper_ions = np.loadtxt(veeper_fn, unpack=True, skiprows = 1, usecols = (19), dtype = 'str', delimiter = '|')  
-    else:
-        restwaves = []; cols = []; sigcols = []; bvals = []; sigbvals = []; 
-        vels      = []; sigbvels = []; flags = []; veeper_ions = [];    
-    
-    for i in range(len(veeper_ions)):
-        temp    = veeper_ions[i]
-        veeper_ions[i] = temp.replace(" ", "")
+    veeper_ions, veeper_restwaves, veeper_cols, veeper_sigcols, veeper_bvals, \
+        veeper_sigbvals, veeper_vels, veeper_sigvels =  eqw.load_veeper_fit(veeper_fn)
+
 
     json_ions, json_restwaves, json_eqw, json_eqwerr, json_col, json_colerr = eqw.json_eqw(json_fn, aodm_fn, json_out)
-    dummy = -9999.
-    print(spec)
+
     for i in range(len(master_ion_list)):
         ion = master_ion_list[i].replace(" ", "")
         all_restwaves = shf.all_restwaves(ion)
         for rw in all_restwaves:
             ncopies = 1
-            index = (veeper_ions == ion) & (restwaves == rw)
+            index = (veeper_ions == ion) & (veeper_restwaves == rw)
             if ion in veeper_ions and len(veeper_ions[index]) > 0:
                 if len(veeper_ions[index]) > 1:
                     ncopies += len(veeper_ions[index]) - 1
                 restwave_list = np.append(restwave_list,   ncopies*[rw])
                 ion_list      = np.append(ion_list,       ncopies*[ion])
-                col_list      = np.append(col_list,         cols[index])
-                sigcol_list   = np.append(sigcol_list,   sigcols[index])
-                bval_list     = np.append(bval_list,       bvals[index])
-                sigbval_list  = np.append(sigbval_list, sigbvals[index])
-                vel_list      = np.append(vel_list,         vels[index])
-                sigvel_list   = np.append(sigvel_list,   sigvels[index])
-                flag_list     = np.append(flag_list,       flags[index])
+                col_list      = np.append(col_list,         veeper_cols[index])
+                sigcol_list   = np.append(sigcol_list,   veeper_sigcols[index])
+                bval_list     = np.append(bval_list,      veeper_bvals[index])
+                sigbval_list  = np.append(sigbval_list, veeper_sigbvals[index])
+                vel_list      = np.append(vel_list,         veeper_vels[index])
+                sigvel_list   = np.append(sigvel_list,   veeper_sigvels[index])
 
             else:
                 restwave_list = np.append(restwave_list,    rw)
@@ -158,8 +79,6 @@ for spec in spec_files:
                 sigbval_list  = np.append(sigbval_list,  dummy)
                 vel_list      = np.append(vel_list,      dummy)
                 sigvel_list   = np.append(sigvel_list,   dummy)
-                flag_list     = np.append(flag_list,     dummy)
-
             
             json_index = (json_ions == ion) & (json_restwaves == rw)
 
@@ -207,11 +126,11 @@ for spec in spec_files:
             
 
 
-dataset_names = ['impact', 'time', 'redshift', 'restwave', 'col', 'colerr', 'bval', 'bvalerr', 'vel', 'velerr', 'flag', 'flag_aodm', \
+dataset_names = ['impact', 'time', 'redshift', 'restwave', 'col', 'colerr', 'bval', 'bvalerr', 'vel', 'velerr', 'flag_aodm', \
                      'eqw_aodm', 'eqw_aodm_err', 'col_aodm', 'col_aodm_err', 'vel_aodm', 'velwidth_aodm', 'col_json', 'col_json_err', \
                      'eqw_json', 'eqw_json_err']
 datasets = [impact_list, time_list, redshift_list, restwave_list, col_list, sigcol_list, bval_list, sigbval_list, vel_list, sigvel_list, \
-                flag_list, flag_aodm_list, eqw_list, sigeqw_list, lncol_list, siglncol_list, velcent_list, velwidth_list, coljson_list, \
+                flag_aodm_list, eqw_list, sigeqw_list, lncol_list, siglncol_list, velcent_list, velwidth_list, coljson_list, \
                 sigcoljson_list, ewjson_list, sigewjson_list]
 
 # first save the numerical data   

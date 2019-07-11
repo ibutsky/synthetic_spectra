@@ -26,36 +26,9 @@ def fix_joebvp_file(fn, redshift):
     output_fn.close()
 
 
-os.chdir('../../data/analyzed_spectra/')
 
-#views =  ['edge_theta1.5']
-#models = ['anisd']
-#impacts = [50]
+redshift = float(sys.argv[1])
+joebvp_files = glob.glob("*.joebvp")
 
-views = ['face', 'edge_theta0', 'edge_theta1.0', 'edge_theta1.5']
-models = ['anisd', 'stream']
-impacts = np.arange(10, 210, 10)
-
-views = ['edge_theta1.0']
-models = ['anisd']
-impacts = [40]
-time = 11.2
-z = 0.2
-
-for view in views:
-    for model in models:
-        for impact in impacts:
-            folder_name = 'COS-FUV_%s_%s_%0.1fGyr_r%ikpc/'%(view, model, time, impact)
-            print(folder_name)
-            if not os.path.isdir(folder_name):
-                continue
-            os.chdir(folder_name)
-            if os.path.isfile('compiledVPoutputs.dat'):
-                os.remove('compiledVPoutputs.dat')
-            joebvp_files = glob.glob('*.joebvp')
-            for fn in joebvp_files:
-                print(fn)
-                sys.stdout.flush()
-                fix_joebvp_file(fn, z)
-            os.chdir('../')
-os.chdir('../../scripts/analysis/')
+for fn in joebvp_files:
+    fix_joebvp_file(fn, redshift)

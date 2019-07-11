@@ -175,3 +175,14 @@ def get_next_ray_id(model, redshift, spectrum_directory = '.'):
     return next_ray_id, fn
 
 
+def calculate_bulk_los_velocity(bulk_velocity, ray_start_coordinates, ray_end_coordinates):
+    ray = np.subtract(ray_end_coordinates, ray_start_coordinates)
+    
+    bv_mag = np.linalg.norm(bulk_velocity)
+    ray_mag = np.linalg.norm(ray)
+
+    # theta is the angle between the ray vector (i.e. line of                                           
+    # sight) and the velocity vectors: a dot b = ab cos(theta) 
+    cos_theta = np.dot(bulk_velocity, ray) / (bv_mag * ray_mag)
+    return bv_mag*cos_theta
+    

@@ -1,8 +1,11 @@
 from astropy.io import fits
 import numpy as np
+import glob
 import os
 import sys
 import yt
+from yt import YTArray
+from yt.units import YTQuantity
 
 def rotate(v, phi, theta):
     y_rot_mat = [
@@ -34,7 +37,7 @@ def generate_random_ray_coordinates(center, rmin, rmax, ray_len):
 
     # [0, 0, 1] is the initial dummy direction of the vector
     # named the "chosen basis" below
-    # 
+
     origin_position = r*rotate([0,0,1], phi, theta)
 
     # Choose an angle in the tanget plane
@@ -139,21 +142,25 @@ def load_simulation_properties(model, output):
             rockstar_fn = '/projects/eot/bafa/tempest/tree_27.dat'
             halo_id = 27
             rockstar_data = get_rockstar_data(rockstar_fn, halo_id)
-            cen, bv, rvir = read_rockstar_info(rockstar_data, ds)
-            gcenter = [cen[0].d, cen[1].d, cen[2].d]
+            gcenter, bulk_velocity, rvir = read_rockstar_info(rockstar_data, ds)
         else:
             print('WARNING: No rockstar file for output %i'%(output))
             ad = ds.all_data()
             # TODO 
     elif model == 'P0':
-        fn = '/nobackup/ibutsky/tmp/pioneer.003456'
+        fn = '/nobackup/ibutsky/tmp/pioneer.%06d'%(output)
         ds = yt.load(fn)
-        v, cen = ds.h.find_max(("gas", "density"))
-        gcenter = cen.d
 
-        sp = ds.sphere(cen, (500, 'kpc'))
-        bv = sp.quantities.bulk_velocity().in_units('km/s')
-    return ds, gcenter, bv
+        basename = '/nobackupp2/nnsanche/pioneer50h243.1536g1bwK1BH/pioneer50h243.1536gst1bwK1BH.%06d'%(output)
+        ahf_halo_file = glob.glob('%s*AHF_halos'%(basename))[0]
+        print(ahf_halo_file, basename)
+        
+        x, y, z, vx, vy, vz = np.loadtxt(ahf_halo_file, unpack=True, skiprows = 1, usecols = (5, 6, 7, 8, 9, 10))
+
+        gcenter = YTArray([x[0], y[0], z[0]], 'kpc') - ds.domain_right_edge
+        bulk_velocity = YTArray([vx[0], vy[0], vz[0]], 'km/s')
+
+    return ds, gcenter, bulk_velocity
             
 
 def get_next_ray_id(model, redshift, spectrum_directory = '.'):

@@ -1,21 +1,22 @@
-import yt
+Bimport yt
 from yt import YTArray
 from yt.units.dimensions import length
 from astropy import constants as const
 import sys
 import math
 import trident
-import numpy as np
+i1;95;0cmport numpy as np
 import os.path
 
 import spec_tools as sp
 
 def make_random_spectrum(model, output, num_spectra = 1, spectrum_directory = '.', \
-                 ion_list = 'all', rmin = 10, rmax = 100, ray_len = 500):
+                         ion_list = 'all', rmin = 10, rmax = 100, ray_len = 500, redshift = None):
 
     
     ds, gcenter, bulk_velocity = sp.load_simulation_properties(model, output)
-    redshift = round(ds.current_redshift, 2)
+    if redshift is None:
+        redshift = round(ds.current_redshift, 2)
     print(gcenter, gcenter[0], bulk_velocity)
     gcenter = np.array(gcenter.d)
     
@@ -69,8 +70,10 @@ output = 524
 model = 'P0'
 output = 3456
 
-
-num_spectra = int(sys.argv[1])
+model = sys.argv[1]
+output = int(sys.argv[2])
+redshift = 0.20
+num_spectra = int(sys.argv[3])
 for i in range(15):
     make_random_spectrum(model, output, rmax = 70, num_spectra = num_spectra, ion_list = ion_list, spectrum_directory = sd)
 

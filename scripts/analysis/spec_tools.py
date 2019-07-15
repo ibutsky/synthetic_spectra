@@ -3,6 +3,7 @@ import numpy as np
 import glob
 import os
 import sys
+import pynbody
 import yt
 from yt import YTArray
 from yt.units import YTQuantity
@@ -151,15 +152,13 @@ def load_simulation_properties(model, output):
         fn = '/nobackup/ibutsky/tmp/pioneer.%06d'%(output)
         ds = yt.load(fn)
 
-        basename = '/nobackupp2/nnsanche/pioneer50h243.1536g1bwK1BH/pioneer50h243.1536gst1bwK1BH.%06d'%(output)
-        ahf_halo_file = glob.glob('%s*AHF_halos'%(basename))[0]
-        print(ahf_halo_file, basename)
-        
-        x, y, z, vx, vy, vz = np.loadtxt(ahf_halo_file, unpack=True, skiprows = 1, usecols = (5, 6, 7, 8, 9, 10))
-
-        gcenter = YTArray([x[0], y[0], z[0]], 'kpc') - ds.domain_right_edge
-        bulk_velocity = YTArray([vx[0], vy[0], vz[0]], 'km/s')
-
+        # calculate center of mass and bulk velocity using pynbody
+        pynbody_file = '/nobackupp2/nnsanche/pioneer50h243.1536g1bwK1BH/pioneer50h243.1536gst1bwK1BH.%06d'%(output)
+        s = pynbody.load(pynbody_file)
+        s.physical_units()
+        gcenter = YTArray(pynbody.analysis.halo.center_of_mass(s.s), 'kpc')
+        bulk_velocity = YTArray(pynbody.analysis.halo.center_of_mass_velocity(s.g), 'km/s')
+    
     return ds, gcenter, bulk_velocity
             
 

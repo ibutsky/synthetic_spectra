@@ -1,51 +1,32 @@
 import os
 import numpy as np
+import glob
 from joebvp import VPmeasure
 
-def veeper_fit(view, model, time, r, working_dir = '../../data/analyzed_spectra/'):
+def single_veeper_fit(basename, joebvp_list = 'flist',  working_dir = '../../data/analyzed_spectra', force_override = False):
     current_dir = os.getcwd()
-    os.chdir(working_dir)
-    basename = 'COS-FUV_%s_%s_%0.1fGyr_r%ikpc'%(view, model, time, r)
-    if os.path.isdir(basename):
-        os.chdir(basename)
-        if os.path.isfile('compiledVPoutputs.dat'):
-            print('Veeper batch fit already run for %s'%(basename))
-        else:
-            hack = False
-            num_lines = sum(1 for line in open('flist'))
-            if num_lines > 0:
-                if num_lines == 1:
-                    hack = True
-                VPmeasure.batch_fit('%s_ibnorm.fits'%(basename), \
-                                    'flist', hack=hack)
-        os.chdir('../')
+    os.chdir('%s/%s'%(working_dir, basename))
+    if os.path.isfile('compiledVPoutputs.dat') and not force_override:
+        print('Veeper batch fit already run for %s'%(basename))
     else:
-        print('No folder: %s'%(basename))
+        VPmeasure.batch_fit('%s_ibnorm.fits'%(basename),joebvp_list)
     os.chdir(current_dir)
 
 
-view =  'edge_theta1.0'
-#view = 'face'
-model = 'anisd'
-time = 11.2
-impacts = np.arange(10,  110, 10)
-impacts = [40]
-#for impact in impacts:
- #   veeper_fit(view, model, time, impact)
+def all_veeper_fit(working_dir = '../../data/analyzed_spectra', joebvp_list = 'flist', force_override = False):
+    current_dir = os.getcwd()
+    os.chdir(working_dir)
+    all_files = glob.glob('*')
+    for basename in all_files:
+        print(basename)
+        if os.path.isdir(basename) and os.path.isfile('%s/%s'%(basename,joebvp_list)):
+            if os.stat('%s/%s'%(basename, joebvp_list)).st_size == 0:
+                print("WARNING: %s is empty; Skipping veeper fit for %s\n"%(joebvp_list, basename))
+            else:
+                single_veeper_fit(basename, joebvp_list = joebvp_list, force_override = force_override)
+    os.chdir(current_dir)
 
-views = ['face', 'edge_theta0', 'edge_theta1.0', 'edge_theta1.5']
-models = ['anisd', 'stream']
-impacts = np.arange(10, 210, 10)
-time = 11.2
+#basename = 'COS-FUV_P0_z0.17_1'
+#single_veeper_fit(basename, force_override = True)
 
-views = ['edge_theta1.0']
-models = ['anisd']
-impacts = [40]
-
-temp = open('temp.dat', 'w')
-for view in views:
-    for model in models:
-        for impact in impacts:
-            temp.write('%s, %s, %i\n'%(view, model, impact))
-            temp.flush()
-            veeper_fit(view, model, time, impact)
+all_veeper_fit()

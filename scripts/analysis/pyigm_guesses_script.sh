@@ -7,7 +7,7 @@ model="P0"
 # Redshift at which spectra was generated (or estimate) 
 redshift=0.17
 # ray_id is the identifying number of the ray (the last number before the .fits)
-ray_id=1
+ray_id=2
 # The desired number of impact parameters to analyze in this script
 nsteps=1
 

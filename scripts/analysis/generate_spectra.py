@@ -1,11 +1,11 @@
-Bimport yt
+import yt
 from yt import YTArray
 from yt.units.dimensions import length
 from astropy import constants as const
 import sys
 import math
 import trident
-i1;95;0cmport numpy as np
+import numpy as np
 import os.path
 
 import spec_tools as sp
@@ -15,6 +15,10 @@ def make_random_spectrum(model, output, num_spectra = 1, spectrum_directory = '.
 
     
     ds, gcenter, bulk_velocity = sp.load_simulation_properties(model, output)
+    ad = ds.all_data()
+    ad.set_field_parameter('bulk_velocity', bulk_velocity)
+    ad.set_field_parameter('center', gcenter)
+
     if redshift is None:
         redshift = round(ds.current_redshift, 2)
     print(gcenter, gcenter[0], bulk_velocity)
@@ -39,6 +43,7 @@ def make_random_spectrum(model, output, num_spectra = 1, spectrum_directory = '.
                             end_position = ray_end,
                             lines=ion_list,
                             ftype='gas',
+                            field_parameters=ad.field_parameters,
                             # the current redshift of the simulation, calculated above, rounded to two decimal places
                             redshift=redshift,
                             data_filename='%s/ray_%s_%s_%i.h5'%(spectrum_directory, model, output, ray_id))

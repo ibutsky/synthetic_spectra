@@ -159,9 +159,6 @@ def load_simulation_properties(model, output):
         gcenter = YTArray(pynbody.analysis.halo.center_of_mass(s.s), 'kpc')
         bulk_velocity = YTArray(pynbody.analysis.halo.center_of_mass_velocity(s.g), 'km/s')
     
-    ad = ds.all_data()
-    ad.set_field_parameter('bulk_velocity', bv)
-    ad.set_field_parameter('center', gcenter)
     return ds, gcenter, bulk_velocity
             
 

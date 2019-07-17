@@ -44,10 +44,10 @@ def make_random_spectrum(model, output, num_spectra = 1, spectrum_directory = '.
                             data_filename='%s/ray_%s_%s_%i.h5'%(spectrum_directory, model, output, ray_id))
          
         for instrument in ['COS-G130M', 'COS-G160M']:
-            sg = trident.SpectrumGenerator(instrument, line_database = 'prochaska_lines.txt')
+            sg = trident.SpectrumGenerator(instrument, line_database = 'pyigm_line_list.txt')
             sg.make_spectrum(ray, lines = ion_list)
             sg.apply_lsf()
-            sg.add_gaussian_noise(20)
+            sg.add_gaussian_noise(10)
             temp_name = '%s.fits'%(instrument)
             sg.save_spectrum(temp_name, format = 'FITS')
             
@@ -68,11 +68,10 @@ sd = '../../data/unanalyzed_spectra'
 model = 'tempest'
 output = 524
 model = 'P0'
-output = 3456
+output = 3195
 
 model = sys.argv[1]
 output = int(sys.argv[2])
-redshift = 0.20
 num_spectra = int(sys.argv[3])
 for i in range(15):
     make_random_spectrum(model, output, rmax = 70, num_spectra = num_spectra, ion_list = ion_list, spectrum_directory = sd)

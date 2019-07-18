@@ -11,8 +11,7 @@ from pyigm.guis import igmguesses
 from linetools.spectra.io import readspec
 
 
-sys.path.append('../plotting/')
-import spec_helper_functions as shf
+import spectrum_analysis_tools as spa
 
 # inwave = REST wavelength for rest-frame EW; observed wavelength for observed EW
 # inspec = flux
@@ -192,13 +191,13 @@ def eqwrange(ion, wave, spec, error, vrange, w0, f0, \
 	return eqw, eqwerr, np.log10(np.abs(col)), np.log10(col+colerr)-np.log10(col), flag, velcent, velwidth
 
 
-def find_ion_limits(ion, fn, ion_list, orientation, model, impact, restwave = 0, redshift = 0,\
+def find_ion_limits(ion, fn, restwave = 0, redshift = 0, \
 			    vrange = (-200, 200), silent = 0, plots = 0, plot_dir = '.', sat_limit = 0.1):
     ion_names = np.loadtxt('../../dla.lst', unpack=True, skiprows = 1, usecols=(1), dtype = 'str')
     ion_wls, ion_fs = np.loadtxt('../../dla.lst', unpack=True, skiprows = 1,usecols=(0, 3))
     ion_wls_int = ion_wls.astype(int)
     
-    wl, flux, ferr = shf.load_spec_from_fits(fn)
+    wl, flux, ferr = spa.load_spec_from_fits(fn)
     
     eqw_list = []
     eqwerr_list = []
@@ -207,45 +206,41 @@ def find_ion_limits(ion, fn, ion_list, orientation, model, impact, restwave = 0,
     flag_list = []
     velcent_list = []
     velwidth_list = []
-    for ion in ion_list:	    
-	    ion = ion.replace(" ", "")
-	    if restwave == 0:
-		    w0 = shf.restwave(ion, z = 0) # REST wavelength for rest-frame EW; observed wavelength for observed EW   
-		    w_obs = shf.restwave(ion, z = redshift)
-	    else:
-		    w0 = restwave
-		    w_obs = restwave * (redshift + 1)
-	    ion_mask  = (ion_names == ion)
-	    wl_mask =  (ion_wls_int[ion_mask] == int(w0))
-	    f0 = ion_fs[ion_mask][wl_mask][0]
+    
+    ion = ion.replace(" ", "")
+    if restwave == 0:
+	    w0 = spa.restwave(ion, z = 0) # REST wavelength for rest-frame EW; observed wavelength for observed EW   
+	    w_obs = spa.restwave(ion, z = redshift)
+    else:
+	    w0 = restwave
+	    w_obs = restwave * (redshift + 1)
+    ion_mask  = (ion_names == ion)
+    wl_mask =  (ion_wls_int[ion_mask] == int(w0))
+    f0 = ion_fs[ion_mask][wl_mask][0]
 
-	    eqw, eqwerr, col, colerr, flag, velcent, velwidth = eqwrange(ion, wl, flux, ferr, vrange, w_obs, f0, silent=silent, \
+    print(ion, restwave, redshift)
+    eqw, eqwerr, col, colerr, flag, velcent, velwidth = eqwrange(ion, wl, flux, ferr, vrange, w_obs, f0, silent=silent, \
 									   plots = plots, plot_dir = plot_dir)
-	    eqw_list.append(eqw)
-	    eqwerr_list.append(eqwerr)
-	    col_list.append(col)
-	    colerr_list.append(colerr)
-	    flag_list.append(flag)
-	    velcent_list.append(velcent)
-	    velwidth_list.append(velwidth)
+    eqw_list.append(eqw)
+    eqwerr_list.append(eqwerr)
+    col_list.append(col)
+    colerr_list.append(colerr)
+    flag_list.append(flag)
+    velcent_list.append(velcent)
+    velwidth_list.append(velwidth)
 
     return eqw_list, eqwerr_list, col_list, colerr_list, flag_list, velcent_list, velwidth_list
 
 
 
 def json_eqw(json_file, fits_file, outfile):
-#	if os.path.isfile(outfile):
 	ion_name = []; restwave = []; eqw = []; eqw_err = []; col = []; col_err = []
-
-	if(False):
-		ion_name = np.loadtxt(outfile, skiprows = 1, usecols = 0, dtype = 'str')
-		restwave, eqw, eqw_err, col, col_err = \
-		    np.loadtxt(outfile, unpack = True, skiprows = 1, usecols =  (1, 2, 3, 4, 5))
+	if not os.path.isfile(json_file):
+		return np.array(ion_name), np.array(restwave), np.array(eqw), np.array(eqw_err), np.array(col), np.array(col_err)
 	
-	if not os.path.isfile(outfile) and os.path.isfile(json_file):
+	if not os.path.isfile(outfile):
 		out =  open(outfile, 'w')
 		out.write('#ion_name, restwave, EQW, EQW_err, logN, logN_err\n')
-		ion_name = []; restwave = []; eqw = []; eqw_err = []; col = []; col_err = []
 
 		with open(json_file) as data_file:
 			igmg_dict = json.load(data_file)

@@ -6,8 +6,7 @@ import numpy as np
 
 
 def load_data(property_list, fn = None, use_filtered = True,
-                  ion = None, orientation = None, model = None, impact = None, time = None):
-
+                  ion = None, model = None, ray_id = None, redshift = None):
     if fn == None:
         if use_filtered:
             fn = '../../data/analyzed_spectra/filtered_spectra.h5'
@@ -16,18 +15,16 @@ def load_data(property_list, fn = None, use_filtered = True,
 
     data = h5.File(fn, 'r')
     
-  #  mask = len(data['impact'].value)* [True]
+    # always True
     mask = data['impact'].value > -99
-    if orientation:
-        mask = mask & (data['orientation'].value == orientation)
+    if redshift:
+        mask = mask & (data['redshift'].value ==    redshift)
     if model:
-        mask = mask & (data['model'      ].value ==       model)
-    if impact:
-        mask = mask & (data['impact'     ].value ==      impact)
-    if time:
-        mask = mask & (data['time'       ].value ==        time)
+        mask = mask & (data['model'   ].value ==       model)
+    if ray_id:
+        mask = mask & (data['ray_id'  ].value ==      ray_id)
     if ion:
-        mask = mask & (data['ion'        ].value ==         ion)
+        mask = mask & (data['ion'     ].value ==         ion)
 
     return_array = []
     for prop in property_list:
@@ -36,13 +33,6 @@ def load_data(property_list, fn = None, use_filtered = True,
     data.close()
     return np.array(return_array)
 
-
-def apply_column_limits(flag, cols, colerrs, lims, limerrs):
-    mask = flag > 8  # check this value
-    cols[mask] = lims[mask]
-    print(len(cols[mask]))
-    colerrs[mask] = np.zeros(len(cols[mask]))
-    return cols, colerrs
 
 def plot_details(xfield, yfield):
     if xfield == 'impact':
@@ -56,7 +46,7 @@ def plot_details(xfield, yfield):
         ylims = (1e12, 1e16)
         ylabel = 'Ion Column Density (cm$^{-2}$)'
     elif yfield == 'vel':
-        ylims  = (-210, 210)
+        ylims  = (-225, 225)
         ylabel = 'Velocity Offset (km / s)'
     elif yfield == 'bval':
         ylims  = (0.1, 79)
@@ -64,24 +54,23 @@ def plot_details(xfield, yfield):
         
     return xlims, ylims, xlabel, ylabel
 
-def plot_data_scatter(ion, xfield = 'impact', yfield = 'col', model = None, orientation = None, \
-                           use_filtered = True, time = None, impact = None, ax = None, color = 'black', \
+def plot_data_scatter(ion, xfield = 'impact', yfield = 'col', model = None, \
+                           use_filtered = True, redshift = None, ax = None, color = 'black', \
                           label = None, annotate_ion = True, axis_labels = True, marker_size = 20, \
                           set_ylim = True):
 
-    xerrfield = '%serr'%(xfield)
-    yerrfield = '%serr'%(yfield)
+    xerrfield = '%s_err'%(xfield)
+    yerrfield = '%s_err'%(yfield)
     
     if xfield == 'impact':
         xerrfield = 'impact'
-    if use_filtered:
-        flagfield = 'flag'
-    else:
-        flagfield = 'flag_aodm'
+
+    flagfield = 'flag'
+    
     field_list = [xfield, xerrfield, yfield, yerrfield, flagfield]
 
     xscatter, xerr, yscatter, yerr, flagscatter = load_data(field_list, ion = ion, use_filtered = use_filtered,\
-                                      model = model, orientation = orientation, impact = impact, time = time)
+                                      model = model, redshift=redshift)
     
     
     # If using filtered data, only keep data points that are measured (above -9999)
@@ -108,7 +97,7 @@ def plot_data_scatter(ion, xfield = 'impact', yfield = 'col', model = None, orie
     if yfield == 'col':
         if not use_filtered:
             yscatter_lim, yscatter_limerr  = load_data(['col_aodm', 'col_aodm_err'], ion = ion, model = model, \
-                                     orientation = orientation, impact = impact, time = time, use_filtered = use_filtered)
+                                     redshift = redshift, use_filtered = use_filtered)
             mask = (flagscatter  != 1)
             yscatter[mask] = yscatter_lim[mask]
             yerr[mask]     = yscatter_limerr[mask]
@@ -163,9 +152,9 @@ def annotate_ion_name(ax, ion_name, fontsize = 18, x_factor = 0.85, y_factor = 0
 
     
 def plot_multipanel_scatter(ion_list, xfield = 'impact', yfield = 'col', nrows = 2, fig = None, ax = None, \
-                                model = None, orientation = None, time = None, impact = None, marker_size = 20,\
-                                color = 'black', label = None, annotate_ion = True, compare = None, use_filtered = True, 
-                            set_ylim = True):
+                                model = None, redshift = None,   marker_size = 20, color = 'black', \
+                                label = None, annotate_ion = True, compare = None, use_filtered = True, set_ylim = True):
+
     ncols = int((len(ion_list) + nrows - 1)/ nrows)
     if ax is None:
         fig, ax = plt.subplots(nrows = nrows, ncols = ncols, figsize=(4*ncols, 3.8*nrows), sharex = True, sharey = False)
@@ -174,26 +163,17 @@ def plot_multipanel_scatter(ion_list, xfield = 'impact', yfield = 'col', nrows =
         ax = [ax, ax]
 
     if compare == 'model':
-        models = ['anisd', 'stream']
-        orientations = [None, None]
+        models = ['P0', 'tempest']
         colors = ['amber', 'windows blue']
         colors = sns.xkcd_palette(colors)
-        labels = ['Diffusion', 'Streaming']
-
-    elif compare == 'orientation':
-        models = [None, None, None]
-        orientations = ['face', 'edge_theta0', 'edge_theta1.0']
-        colors = ['pale red', 'medium green', 'denim blue']
-        colors = sns.xkcd_palette(colors)
-        labels = ['face-on', 'theta = 0', 'theta = 1']
+        labels = ['Patient 0', 'Tempest']
 
     else:
         models = [model]
-        orientations = [orientation]
         colors = [color]
         labels = [label]
     
-    for orientation, model, label, color in zip (orientations, models, labels, colors):
+    for model, label, color in zip (models, labels, colors):
         for i, ion in enumerate(ion_list):
             ion = ion.replace(" ", "")
             row = int(i / ncols)
@@ -201,8 +181,8 @@ def plot_multipanel_scatter(ion_list, xfield = 'impact', yfield = 'col', nrows =
         
         
             plot_data_scatter(ion, xfield = xfield, yfield = yfield, ax = ax[row][col], \
-                              model = model, orientation = orientation, time = time, use_filtered = use_filtered,\
-                              impact = impact, color = color, label = label, marker_size = marker_size,\
+                              model = model, redshift = redshift, use_filtered = use_filtered,\
+                              color = color, label = label, marker_size = marker_size,\
                               annotate_ion = annotate_ion, axis_labels = False, set_ylim = set_ylim)
             
             if row == nrows - 1:

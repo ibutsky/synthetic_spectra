@@ -253,7 +253,6 @@ def json_eqw(json_file, fits_file, outfile):
 		spec = readspec(fits_file)
 		for i, cc in enumerate(comp_list):
 			for j, al in enumerate(cc._abslines):
-				sys.stdout.flush()
 				al.analy['spec']=spec
 				al.measure_ew()
 				al.measure_aodm()

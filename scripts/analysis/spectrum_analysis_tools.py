@@ -4,7 +4,7 @@ import glob
 import os
 import sys
 
-def find_spec_impact_parameter(model, redshift, ray_id,  work_dir = '../../data/'):
+def find_spec_impact_parameter(model, redshift, ray_id,  work_dir = '../../data'):
     info_file = '%s/%s_z%0.2f_ray_data.dat'%(work_dir, model, redshift)
     id_list, impact_list = np.loadtxt(info_file, unpack=True, skiprows=1, usecols=(0,1))
     return impact_list[id_list == ray_id]
@@ -30,15 +30,14 @@ def spec_ready_for_analysis(spec_name):
 def spec_base_filename(model, redshift, ray_id):
     return 'COS-FUV_%s_z%.2f_%i'%(model, redshift, ray_id)
 
-def load_velocity_data(ion,model, redshift, ray_id,  work_dir = '../../data/analyzed_spectra' ):
-
+def load_velocity_data(ion, spec, work_dir = '../../data/analyzed_spectra'):
+    redshift = float(spec[-6:-2])
     w0 = restwave(ion, redshift)
-
-    base = spec_base_filename(model, redshift, ray_id)
-    wl, flux, ferr = load_spec_from_fits('%s/%s/%s_ibnorm.fits'%(work_dir,base, base))
+    wl, flux, ferr = load_spec_from_fits('%s/%s/%s_ibnorm.fits'%(work_dir, spec, spec))
     vv = (wl-w0) / w0 * 2.9979e5
 
-    fit = '%s/%s/FitInspection.fits'%(work_dir,base)
+    fit = '%s/%s/FitInspection.fits'%(work_dir,spec)
+    
     if os.path.isfile(fit):
         wlfit, fluxfit, ferrfit = load_spec_from_fits(fit)
         vvfit = (wlfit-w0) / w0 * 2.9979e5

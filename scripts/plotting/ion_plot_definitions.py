@@ -166,7 +166,7 @@ def make_projection(ds, axis, ion_fields, center, width):
     return p.to_frb(width, 800, center=center)
 
 
-def generate_mask(data, ion_list, model =  None, orientation = None):
+def generate_mask(data, ion_list, model =  None):
     mask = np.zeros(len(data['impact']), dtype=bool)
     if ion_list != 'all':
         for ion in ion_list:
@@ -174,14 +174,12 @@ def generate_mask(data, ion_list, model =  None, orientation = None):
             mask = mask | ((data['ion'].value == ion))
     if model: 
         mask = mask & (data['model'].value == model)
-    if orientation:
-        mask = mask & (data['orientation'].value == orientation)
         
     return mask
 
 
-def generate_masked_data(ion_list, xfield, yfield, flagfield, model = None, orientation = None):
-    mask = generate_mask(ion_list, model = model, orientation = orientation)
+def generate_masked_data(ion_list, xfield, yfield, flagfield, model = None):
+    mask = generate_mask(ion_list, model = model)
     if xfield == 'impact':
         xlist = impact_list
         xerr  = np.zeros(len(impact_list)) 
@@ -236,15 +234,15 @@ def apply_column_limits(flag, cols, colerrs, lims, limerrs):
     return cols, colerrs
 
 
-def load_veeper_ion_column(ion, model, orientation = None):
+def load_veeper_ion_column(ion, model):
     data = h5.File('../data/combined_spectra.h5', 'r')
     flag_list = data['flag'].value
     impact_list = data['impact'].value
-    col_list = data['col'].value
-    sigcol_list = data['colerr'].value
+    col_list = data['col_veeper'].value
+    sigcol_list = data['col_err_veeper'].value
     col_list, sigcol_list = apply_column_limits(flag_list, col_list,\
-                                            sigcol_list, data['col_lim'], data['col_limerr'])
+                                            sigcol_list, data['col_aodm'], data['col_err_aodm'])
 
-    mask = generate_mask(data, [ion], model = model, orientation = orientation)
+    mask = generate_mask(data, [ion], model = model)
     return impact_list[mask], col_list[mask], sigcol_list[mask], flag_list[mask]
 

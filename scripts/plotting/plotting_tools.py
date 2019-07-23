@@ -5,7 +5,7 @@ import numpy as np
 
 
 
-def load_data(property_list, fn = None, use_filtered = True,
+def load_data(property_list, fn = None, use_filtered = True, ovi_label = None,
                   ion = None, model = None, ray_id = None, redshift = None):
     if fn == None:
         if use_filtered:
@@ -18,14 +18,15 @@ def load_data(property_list, fn = None, use_filtered = True,
     # always True
     mask = data['impact'].value > -99
     if redshift:
-        mask = mask & (data['redshift'].value ==    redshift)
+        mask = mask & (data['redshift'].value == redshift)
     if model:
-        mask = mask & (data['model'   ].value ==       model)
+        mask = mask & (data['model'   ].value ==    model)
     if ray_id:
-        mask = mask & (data['ray_id'  ].value ==      ray_id)
+        mask = mask & (data['ray_id'  ].value ==   ray_id)
     if ion:
-        mask = mask & (data['ion'     ].value ==         ion)
-
+        mask = mask & (data['ion'     ].value ==      ion)
+    if ovi_label:
+        mask = mask & (data['label'   ].value == ovi_label)
     return_array = []
     for prop in property_list:
         return_array.append(np.array((data[prop].value)[mask]))
@@ -54,10 +55,10 @@ def plot_details(xfield, yfield):
         
     return xlims, ylims, xlabel, ylabel
 
-def plot_data_scatter(ion, xfield = 'impact', yfield = 'col', model = None, \
+def plot_data_scatter(ion, xfield = 'impact', yfield = 'col', model = None, ovi_label = None,\
                            use_filtered = True, redshift = None, ax = None, color = 'black', \
                           label = None, annotate_ion = True, axis_labels = True, marker_size = 20, \
-                          set_ylim = True):
+                          marker_style = 's', set_ylim = True):
 
     xerrfield = '%s_err'%(xfield)
     yerrfield = '%s_err'%(yfield)
@@ -70,7 +71,7 @@ def plot_data_scatter(ion, xfield = 'impact', yfield = 'col', model = None, \
     field_list = [xfield, xerrfield, yfield, yerrfield, flagfield]
 
     xscatter, xerr, yscatter, yerr, flagscatter = load_data(field_list, ion = ion, use_filtered = use_filtered,\
-                                      model = model, redshift=redshift)
+                                      model = model, redshift=redshift, ovi_label = ovi_label)
     
     
     # If using filtered data, only keep data points that are measured (above -9999)
@@ -107,11 +108,11 @@ def plot_data_scatter(ion, xfield = 'impact', yfield = 'col', model = None, \
         ax.set_yscale('log')
         
         sat = flagscatter == 9
-        ax.scatter(xscatter[sat], yscatter[sat],  marker = "^", edgecolor = color, facecolor = 'white', s = marker_size)
+        ax.scatter(xscatter[sat], yscatter[sat],  marker = "^", edgecolor = 'black', facecolor = color, s = marker_size)
         nondetect = flagscatter == 5
-        ax.scatter(xscatter[nondetect], yscatter[nondetect],  marker = "v", edgecolor = color, facecolor = 'white', s = marker_size)
+        ax.scatter(xscatter[nondetect], yscatter[nondetect],  marker = "v", edgecolor = 'black', facecolor = color, s = marker_size)
         detect = flagscatter == 1
-        ax.scatter(xscatter[detect], yscatter[detect],  marker = "s", edgecolor = color, facecolor = 'white', label = label, s = marker_size)
+        ax.scatter(xscatter[detect], yscatter[detect],  marker = marker_style, edgecolor = 'black', facecolor = color, label = label, s = marker_size)
         ax.errorbar(xscatter[detect], yscatter[detect], yerr = yerr[detect], color = 'black', linestyle = '')
 
         
@@ -152,7 +153,7 @@ def annotate_ion_name(ax, ion_name, fontsize = 18, x_factor = 0.85, y_factor = 0
 
     
 def plot_multipanel_scatter(ion_list, xfield = 'impact', yfield = 'col', nrows = 2, fig = None, ax = None, \
-                                model = None, redshift = None,   marker_size = 20, color = 'black', \
+                                model = None, redshift = None, ovi_label = None, marker_size = 20, color = 'black', \
                                 label = None, annotate_ion = True, compare = None, use_filtered = True, set_ylim = True):
 
     ncols = int((len(ion_list) + nrows - 1)/ nrows)
@@ -167,22 +168,28 @@ def plot_multipanel_scatter(ion_list, xfield = 'impact', yfield = 'col', nrows =
         colors = ['amber', 'windows blue']
         colors = sns.xkcd_palette(colors)
         labels = ['Patient 0', 'Tempest']
+        marker_styles = ['s', 'o']
 
+    elif compare == 'ovi':
+        ovi_label = ['broad', 'narrow', 'nolow']
+        colors = ['green', 'orange', 'purple']
+        labels = ['Broad', 'Narrow', 'No-low']
+        marker_styles = ['s', 'D', 'o']
     else:
         models = [model]
         colors = [color]
         labels = [label]
+        marker_styles = ['s']
     
-    for model, label, color in zip (models, labels, colors):
+    for model, label, color, marker_style in zip (models, labels, colors, marker_styles):
         for i, ion in enumerate(ion_list):
             ion = ion.replace(" ", "")
             row = int(i / ncols)
             col = i - row*ncols
         
-        
             plot_data_scatter(ion, xfield = xfield, yfield = yfield, ax = ax[row][col], \
                               model = model, redshift = redshift, use_filtered = use_filtered,\
-                              color = color, label = label, marker_size = marker_size,\
+                              color = color, label = label, marker_size = marker_size, marker_style = marker_style,\
                               annotate_ion = annotate_ion, axis_labels = False, set_ylim = set_ylim)
             
             if row == nrows - 1:

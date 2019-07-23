@@ -48,29 +48,6 @@ def best_measurement(veeper_col_list, veeper_colerr_list, aodm_col_list, aodm_co
         bvalerr = bval_err_list[detected]
         flag   = flag_list[detected]
 
-#
-#        json_mask = detected & (json_col_list > -9999)
-#        aodm_mask = detected & (aodm_col_list > -9999)
-#        temp_col = np.append(veeper_col_list[detected], 
-#                                   [aodm_col_list[aodm_mask], 
-#                                   json_col_list[json_mask]])
-#        temp_col_err = np.append(veeper_colerr_list[detected], 
-#                                      [aodm_colerr_list[aodm_mask],
-#                                      json_colerr_list[json_mask]])
-#        col, colerr = calculate_mean_err(temp_col, temp_col_err, use_log = True)
-            
-            #inds    = veeper_colerr_list[detected].argsort()
-            #col     = veeper_col_list[detected][inds][0]
-            #colerr  = veeper_colerr_list[detected][inds][0]
-
-#            vel     =      vel_list[detected][0]
-#            velerr  =  vel_err_list[detected][0]
-#            bval    =     bval_list[detected][0]
-#            bvalerr = bval_err_list[detected][0]
-#        vel, velerr = calculate_mean_err(vel_list[detected], vel_err_list[detected])
-#        bval, bvalerr = calculate_mean_err(bval_list[detected], bval_err_list[detected])
-#        flag = 1
-
     elif len(veeper_col_list[sat])  > 0:
         inds = aodm_col_list[sat].argsort()
         col    =    aodm_col_list[sat][inds][0]
@@ -81,9 +58,6 @@ def best_measurement(veeper_col_list, veeper_colerr_list, aodm_col_list, aodm_co
         velerr  =  [vel_err_list[sat][0]]
         bval    =    [ bval_list[sat][0]]
         bvalerr = [bval_err_list[sat][0]]
-
-        #vel, velerr= calculate_mean_err(vel_list[sat], vel_err_list[sat])
-        #bval, bvalerr = calculate_mean_err(bval_list[sat], bval_err_list[sat])
 
         flag = [9]
 
@@ -105,16 +79,16 @@ def best_measurement(veeper_col_list, veeper_colerr_list, aodm_col_list, aodm_co
 
 all_data = h5.File('../../data/analyzed_spectra/combined_spectra.h5', 'r')
 all_models, all_ray_ids, all_redshifts, all_impacts, all_ions, veeper_cols, veeper_colerrs, \
-    vels, velerrs, bvals, bvalerrs, aodm_cols, aodm_colerrs, json_cols, json_colerrs, aodm_flags = \
+    vels, velerrs, bvals, bvalerrs, aodm_cols, aodm_colerrs, json_cols, json_colerrs, aodm_flags, labels = \
     pt.load_data(['model', 'ray_id', 'redshift', 'impact', 'ion', 'col_veeper', 'col_err_veeper', 'vel', 'vel_err', \
-                  'bval', 'bval_err', 'col_aodm', 'col_err_aodm', 'col_json', 'col_err_json', 'flag'], \
+                  'bval', 'bval_err', 'col_aodm', 'col_err_aodm', 'col_json', 'col_err_json', 'flag', 'label'], \
                      use_filtered = False)
 
 
 
-ray_id_list = [];           model_list = [];   redshift_list = [];  
-impact_list      = [];        ion_list = [];    col_list = [];      flag_list = [];
-sigcol_list      = [];       bval_list = [];    vel_list = [];   sigbval_list = [];
+ray_id_list      = [];      model_list = []; redshift_list = [];     label_list = [];
+impact_list      = [];        ion_list = [];      col_list = [];      flag_list = [];
+sigcol_list      = [];       bval_list = [];      vel_list = [];   sigbval_list = [];
 sigvel_list      = [];   ion_name_list = [];   
 
 
@@ -153,15 +127,19 @@ for model in models:
                         redshift_list    = np.append(redshift_list,  num*[redshift])
 
                         impact = all_impacts[mask][0]
+                        label  = labels[mask][0]
                         impact_list      = np.append(impact_list,  num*[impact])
                         ion_name_list    = np.append(ion_name_list,  num*[ion])                    
+                        label_list       = np.append(label_list,     num*[label])
 
 
 print(len(impact_list), len(col_list), len(vel_list), len(model_list))
 spec_outfile = h5.File('../../data/analyzed_spectra/filtered_spectra.h5', 'w')
 
-dataset_names = ['impact', 'redshift', 'col', 'col_err', 'bval', 'bval_err', 'vel', 'vel_err', 'flag']
-datasets = [impact_list, redshift_list, col_list, sigcol_list, bval_list, sigbval_list, vel_list, sigvel_list,flag_list]
+dataset_names = ['impact', 'redshift', 'col', 'col_err', 'bval', 'bval_err', \
+                     'vel', 'vel_err', 'flag']
+datasets = [impact_list, redshift_list, col_list, sigcol_list, bval_list, sigbval_list,\
+                vel_list, sigvel_list,flag_list]
 # first save the numerical data   
 for dset, data in zip(dataset_names, datasets):
     data = data.astype('float64')
@@ -170,8 +148,8 @@ for dset, data in zip(dataset_names, datasets):
 
 # then save string-type data in a special way   
 dt = h5.special_dtype(vlen=str)
-dataset_names = ['model', 'ion']
-datasets = [model_list, ion_name_list]
+dataset_names = ['model', 'ion', 'label']
+datasets = [model_list, ion_name_list, label_list]
 for dset, data in zip(dataset_names, datasets):
     current_dset = spec_outfile.create_dataset(dset, (len(data),), dtype=dt)
     for i in range(len(data)):

@@ -218,7 +218,6 @@ def find_ion_limits(ion, fn, restwave = 0, redshift = 0, \
     wl_mask =  (ion_wls_int[ion_mask] == int(w0))
     f0 = ion_fs[ion_mask][wl_mask][0]
 
-    print(ion, restwave, redshift)
     eqw, eqwerr, col, colerr, flag, velcent, velwidth = eqwrange(ion, wl, flux, ferr, vrange, w_obs, f0, silent=silent, \
 									   plots = plots, plot_dir = plot_dir)
     eqw_list.append(eqw)
@@ -280,8 +279,8 @@ def load_veeper_fit(veeper_fn):
 	if os.path.isfile(veeper_fn):
 		restwaves, cols, sigcols, bvals, sigbvals, vels, sigvels = \
 		    np.loadtxt(veeper_fn, unpack=True, skiprows = 1, usecols = (1,3,4,5,6,7,8), delimiter = '|')
-		veeper_ions = np.loadtxt(veeper_fn, unpack=True, skiprows = 1, \
-						 usecols = (19), dtype = 'str', delimiter = '|')
+		veeper_ions, labels = np.loadtxt(veeper_fn, unpack=True, skiprows = 1, \
+						 usecols = (19, 21), dtype = 'str', delimiter = '|')
 		for i in range(len(veeper_ions)):
 			temp    = veeper_ions[i]
 			veeper_ions[i] = temp.replace(" ", "")
@@ -296,7 +295,8 @@ def load_veeper_fit(veeper_fn):
 			sigbvals = sigbvals[mask]
 			vels = vels[mask]
 			sigvels = sigvels[mask]
+			labels = labels[mask]
 	else:
                 restwaves = []; cols = []; sigcols = []; bvals = []; sigbvals = [];
-                vels      = []; sigvels = []; flags = []; veeper_ions = [];
-	return veeper_ions, restwaves, cols, sigcols, bvals, sigbvals, vels, sigvels
+                vels      = []; sigvels = []; flags = []; veeper_ions = []; labels = [];
+	return veeper_ions, restwaves, cols, sigcols, bvals, sigbvals, vels, sigvels, labels

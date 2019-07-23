@@ -1,11 +1,11 @@
 #### change these parameters to specify which spectra to analyze #####
-# Name of model: 'stream' or 'anisd'
+# Name of model: 'P0' or 'tempest'
 unanalyzed_spectra_dir="../../data/unanalyzed_spectra"
 analyzed_spectra_dir="../../data/analyzed_spectra"
 model="tempest"
-model="P0"
+#model="P0"
 # Redshift at which spectra was generated (or estimate) 
-redshift=0.17
+redshift=0.20
 # ray_id is the identifying number of the ray (the last number before the .fits)
 ray_id=2
 # The desired number of impact parameters to analyze in this script
@@ -19,17 +19,13 @@ end_ray_id=$[$ray_id+$nsteps]
 #cd ../../data/analyzed_spectra
 while [ $ray_id -lt $end_ray_id ]; do
     # defining the base name that many files share
-    basefile="COS-FUV_"$model$"_z"$redshift"_"$ray_id
-    basefolder=$analyzed_spectra_dir"/"$basefile
-    basename=$basefolder"/"$basefile
-
-    basename=$basefile
+    basename="COS-FUV_"$model$"_z"$redshift"_"$ray_id
     # make the directory where we'll store all relevant data for this spectrum
     mkdir $basename
     # navigate to spectrum-specific directory
     cd $basename
     # move unanalyzed fits files to this directory
-    mv "../"$unanalyzed_spectra_dir"/"$basefile.fits .
+    mv "../"$unanalyzed_spectra_dir"/"$basefile.fits  $basefile.fits
     # set continuum fit 
     lt_continuumfit --redshift $redshift $basename".fits" $basename"_ibnorm.fits"
     # run pyigm_igmguesses 

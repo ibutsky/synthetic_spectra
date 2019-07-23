@@ -15,7 +15,7 @@ master_ion_list = ['HI', 'OVI', 'CII', 'CIII', 'SiII', 'SiIII', 'SiIV', 'NV']
 work_dir = '../../data/analyzed_spectra'
 spec_outfile = h5.File('%s/combined_spectra.h5'%(work_dir), 'w')
 
-model_list   = [];   redshift_list = [];   impact_list = [];  
+model_list   = [];   redshift_list = [];   impact_list = [];     label_list = [];
 col_list     = [];     sigcol_list = [];     bval_list = [];   sigbval_list = [];
 vel_list     = [];     sigvel_list = [];      ion_list = [];    ray_id_list = [];
 eqw_list     = [];     sigeqw_list = [];    lncol_list = [];  siglncol_list = []; 
@@ -45,8 +45,7 @@ for spec in spec_files:
         os.mkdir(aodm_plot_dir)
 
     veeper_ions, veeper_restwaves, veeper_cols, veeper_colerr, veeper_bvals, \
-        veeper_bvalerr, veeper_vels, veeper_velerr =  eqw.load_veeper_fit(veeper_fn)
-
+        veeper_bvalerr, veeper_vels, veeper_velerr, veeper_label =  eqw.load_veeper_fit(veeper_fn)
     json_ions, json_restwaves, json_eqw, json_eqwerr, json_col, json_colerr = eqw.json_eqw(json_fn, aodm_fn, json_out)
     
     for i in range(len(master_ion_list)):
@@ -55,10 +54,10 @@ for spec in spec_files:
         for rw in all_restwaves:
             # assume the number of components is 1, to start
             num_comps = 1
-            index = (veeper_ions == ion) & (veeper_restwaves == rw)
-            if ion in veeper_ions and len(veeper_ions[index]) > 0:
+            index = (veeper_ions == ion)# & (veeper_restwaves == rw)
+            if ion in veeper_ions:# and veeper_ions[index].size > 0:
                 if len(veeper_ions[index]) > 1:
-                    num_comps += len(veeper_ions[index]) - 1
+                    num_comps += veeper_ions[index].size - 1
                 restwave_list = np.append(restwave_list,   num_comps*[rw])
                 ion_list      = np.append(ion_list,       num_comps*[ion])
                 col_list      = np.append(col_list,         veeper_cols[index])
@@ -67,6 +66,7 @@ for spec in spec_files:
                 sigbval_list  = np.append(sigbval_list, veeper_bvalerr[index])
                 vel_list      = np.append(vel_list,         veeper_vels[index])
                 sigvel_list   = np.append(sigvel_list,   veeper_velerr[index])
+                label_list    = np.append(label_list,     veeper_label[index])
 
             else:
                 restwave_list = np.append(restwave_list,    rw)
@@ -77,7 +77,8 @@ for spec in spec_files:
                 sigbval_list  = np.append(sigbval_list,  dummy)
                 vel_list      = np.append(vel_list,      dummy)
                 sigvel_list   = np.append(sigvel_list,   dummy)
-            
+                label_list    = np.append(label_list,     "--")
+
             json_index = (json_ions == ion) & (json_restwaves == rw)
 
             if ion in json_ions and len(json_ions[json_index]) > 0:
@@ -107,7 +108,6 @@ for spec in spec_files:
             model_list       = np.append(model_list,      num_comps*[model])
             ray_id_list      = np.append(ray_id_list,     num_comps*[ray_id])
             redshift_list    = np.append(redshift_list,   num_comps*[redshift])
-          
 
             eqws, sigeqw, lncol, siglncol, flag_aodm, velcent, velwidth = \
                 eqw.find_ion_limits(ion, aodm_fn, restwave = rw, redshift = redshift,\
@@ -119,8 +119,8 @@ for spec in spec_files:
             lncol_list    = np.append(lncol_list,         num_comps*[lncol[0]])
             siglncol_list = np.append(siglncol_list,   num_comps*[siglncol[0]])
             
-
-
+print(label_list)
+print(len(label_list), len(model_list))
 dataset_names = ['impact', 'ray_id', 'redshift', 'restwave', 'col_veeper', 'col_err_veeper', 'bval', \
                   'bval_err', 'vel', 'vel_err', 'flag', 'eqw_aodm', 'eqw_err_aodm', 'col_aodm', \
                    'col_err_aodm', 'col_json', 'col_err_json', 'eqw_json', 'eqw_err_json']
@@ -136,8 +136,8 @@ for dset, data in zip(dataset_names, datasets):
 
 # then save string-type data in a special way     
 dt = h5.special_dtype(vlen=str)
-dataset_names = ['model', 'ion']
-datasets = [model_list, ion_list]
+dataset_names = ['model', 'ion', 'label']
+datasets = [model_list, ion_list, label_list]
 for dset, data in zip(dataset_names, datasets):
     print(dset)
     current_dset = spec_outfile.create_dataset(dset, (len(data),), dtype=dt)

@@ -25,7 +25,7 @@ while [ $ray_id -lt $end_ray_id ]; do
     # navigate to spectrum-specific directory
     cd $basename
     # move unanalyzed fits files to this directory
-    mv "../"$unanalyzed_spectra_dir"/"$basefile.fits  $basefile.fits
+    mv "../"$unanalyzed_spectra_dir"/"$basename.fits  $basename.fits
     # set continuum fit 
     lt_continuumfit --redshift $redshift $basename".fits" $basename"_ibnorm.fits"
     # run pyigm_igmguesses 

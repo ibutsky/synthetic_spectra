@@ -33,10 +33,10 @@ def clean_compiled_VPoutputs(fn):
 
 
 spec_files = glob.glob('../../data/analyzed_spectra/COS-FUV*')
-for spec in spec_files:
-    fn = '%s/compiledVPoutputs.dat'%(spec)
-    original_fn = '%s/originalVPoutputs.dat'%(spec)
-    if not os.path.isfile(original_fn):
-        shutil.copy(fn, original_fn)
-    clean_compiled_VPoutputs(fn)
+#for spec in spec_files:
+#    fn = '%s/compiledVPoutputs.dat'%(spec)
+#    original_fn = '%s/originalVPoutputs.dat'%(spec)
+#    if not os.path.isfile(original_fn):
+#        shutil.copy(fn, original_fn)
+#    clean_compiled_VPoutputs(fn)
 

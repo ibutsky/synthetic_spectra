@@ -3,6 +3,7 @@ import numpy as np
 import glob
 from joebvp import VPmeasure
 import clean_compiled_VPoutputs as clean
+import shutil
 
 def single_veeper_fit(basename, joebvp_list = 'flist',  working_dir = '../../data/analyzed_spectra', force_override = False):
     current_dir = os.getcwd()

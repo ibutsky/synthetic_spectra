@@ -6,7 +6,7 @@ model="P0"
 # Redshift at which spectra was generated (or estimate) 
 redshift=0.25
 # ray_id is the identifying number of the ray (the last number before the .fits)
-ray_id=1
+ray_id=10
 
 
 #### Don't change below this line, unless you're sure you want to ####

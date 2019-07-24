@@ -30,6 +30,7 @@ dummy = -9999.
 
 spec_files = glob.glob('COS-FUV*')
 for spec in spec_files:
+    print(spec)
     if not os.path.isdir(spec) or not spa.spec_ready_for_analysis(spec):
         print('Skipping %s\n'%(spec))
         continue

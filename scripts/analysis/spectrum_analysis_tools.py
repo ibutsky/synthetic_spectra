@@ -10,11 +10,15 @@ def find_spec_impact_parameter(model, redshift, ray_id,  work_dir = '../../data'
     return impact_list[id_list == ray_id]
 
 def extract_spec_info(spec_name):
-    print(spec_name)
-    # note: this assumes a specific naming convention                                                                                                                                                         
-    model = spec_name[8:-8]
-    redshift = float(spec_name[-6:-2])
-    ray_id = int(spec_name[-1])
+    # note: this assumes a specific naming convention      
+    for test_indent in range(3):
+        ray_id = spec_name[-1 - test_indent : ]
+        if not ray_id.__contains__('_'):
+            indent = test_indent
+
+    model = spec_name[8  : -8 - indent]
+    redshift = float(spec_name[-6 - indent : -2 - indent])
+    ray_id = int(spec_name[-1 - indent :])
     impact = find_spec_impact_parameter(model, redshift, ray_id)
     return model, redshift, impact, ray_id
 
@@ -31,7 +35,7 @@ def spec_base_filename(model, redshift, ray_id):
     return 'COS-FUV_%s_z%.2f_%i'%(model, redshift, ray_id)
 
 def load_velocity_data(ion, spec, work_dir = '../../data/analyzed_spectra'):
-    redshift = float(spec[-6:-2])
+    model, redshift, impact, ray_id = extract_spec_info(spec)
     w0 = restwave(ion, redshift)
     wl, flux, ferr = load_spec_from_fits('%s/%s/%s_ibnorm.fits'%(work_dir, spec, spec))
     vv = (wl-w0) / w0 * 2.9979e5

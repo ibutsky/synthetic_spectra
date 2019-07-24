@@ -2,8 +2,6 @@ import os
 import numpy as np
 import glob
 from joebvp import VPmeasure
-import clean_compiled_VPoutputs as clean
-import shutil
 
 def single_veeper_fit(basename, joebvp_list = 'flist',  working_dir = '../../data/analyzed_spectra', force_override = False):
     current_dir = os.getcwd()
@@ -26,9 +24,6 @@ def all_veeper_fit(working_dir = '../../data/analyzed_spectra', joebvp_list = 'f
                 print("WARNING: %s is empty; Skipping veeper fit for %s\n"%(joebvp_list, basename))
             else:
                 single_veeper_fit(basename, joebvp_list = joebvp_list, force_override = force_override)
-                shutil.copy('compiledVPoutputs.dat', 'originalVPoutputs.dat')
-                clean.clean_compiledVPoutputs('compiledVPoutputs.dat')
     os.chdir(current_dir)
-
 
 all_veeper_fit()

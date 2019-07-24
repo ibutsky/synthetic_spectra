@@ -281,6 +281,14 @@ def load_veeper_fit(veeper_fn):
 		    np.loadtxt(veeper_fn, unpack=True, skiprows = 1, usecols = (1,3,4,5,6,7,8), delimiter = '|')
 		veeper_ions, labels = np.loadtxt(veeper_fn, unpack=True, skiprows = 1, \
 						 usecols = (19, 21), dtype = 'str', delimiter = '|')
+		
+		if type(veeper_ions) == np.str_:
+			veeper_ions = np.array([veeper_ions]); restwaves =  np.array([restwaves]); 
+			cols =  np.array([cols]); sigcols =  np.array([sigcols]); 
+			bvals =  np.array([bvals]); sigbvals =  np.array([sigbvals]);
+			vels =  np.array([vels]); sigvels =  np.array([sigvels]); 
+			labels =  np.array([labels]);
+
 		for i in range(len(veeper_ions)):
 			temp    = veeper_ions[i]
 			veeper_ions[i] = temp.replace(" ", "")

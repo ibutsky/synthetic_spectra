@@ -165,13 +165,15 @@ def plot_multipanel_scatter(ion_list, xfield = 'impact', yfield = 'col', nrows =
 
     if compare == 'model':
         models = ['P0', 'tempest']
+        ovi_labels = [None, None]
         colors = ['amber', 'windows blue']
         colors = sns.xkcd_palette(colors)
         labels = ['Patient 0', 'Tempest']
         marker_styles = ['s', 'o']
 
     elif compare == 'ovi':
-        ovi_label = ['broad', 'narrow', 'nolow']
+        models = [None, None, None]
+        ovi_labels = ['broad', 'narrow', 'nolow']
         colors = ['green', 'orange', 'purple']
         labels = ['Broad', 'Narrow', 'No-low']
         marker_styles = ['s', 'D', 'o']

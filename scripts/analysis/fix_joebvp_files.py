@@ -2,11 +2,21 @@ import os
 import glob
 import numpy as np
 import sys
+from astropy import constants as const
+
+# speed of light in km/s
+c = const.c.to('km/s').value
 
 def fix_joebvp_file(fn, redshift):
-    restwaves, cols, bvals, nflag, bflag, vflag, vlim1, vlim2, z_comp = \
+    # if there's an empty joebvp file, remove the file and exit
+    if sum(1 for line in open(fn)) == 1:
+       os.remove(fn)
+       return
+
+    restwaves, cols, bvals, nflag, bflag, vflag, vlim1, vlim2, wobs1, wobs2, z_comp = \
     np.loadtxt(fn, unpack=True, skiprows = 1, \
-                usecols = (1,3,4, 6,7,8,9, 10, 13), delimiter = '|')
+                usecols = (1,3,4, 6,7,8,9,10,11,12,13), delimiter = '|')
+
     file_name, veeper_ions, rely, comment = \
     np.loadtxt(fn, unpack=True, skiprows = 1, usecols = (0, 14, 15, 16), dtype = 'str', delimiter = '|')
 
@@ -17,9 +27,11 @@ def fix_joebvp_file(fn, redshift):
         rely = [rely]; comment = [comment];
 
     zsys = redshift*np.ones(len(restwaves))    
-    vels = (z_comp - zsys) * 299792.458
-    wobs1 = restwaves * (1 + z_comp + vlim1 / 299792.458)
-    wobs2 = restwaves * (1 + z_comp + vlim2 / 299792.458)
+    vels = c * ((1 + z_comp) / (1 + zsys) - 1)
+    
+    dv = (wobs2 - wobs1)/restwaves/(1 + z_comp) * c / 2.0
+    vlim1 = vels - dv
+    vlim2 = vels + dv
     
     output_fn = open(fn, 'w')
     output_fn.write('specfile|restwave|zsys|col|bval|vel|nflag|bflag|vflag|vlim1|vlim2|wobs1|wobs2|z_comp|trans|rely|comment\n')

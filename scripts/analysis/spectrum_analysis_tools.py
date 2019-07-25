@@ -75,7 +75,8 @@ def restwave(ion, z = 0):
     # the veeper VPmodel fit                                                                                                                                                           
     ion = ion.replace(" ", "")
     if ion == 'HI':
-        restwave = 1215.67
+#        restwave = 1215.67
+        restwave = 920.963
     elif ion == 'CII':
         restwave = 1334.5323
     elif ion == 'CIII':

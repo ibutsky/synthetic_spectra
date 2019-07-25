@@ -21,11 +21,10 @@ def clean_compiled_VPoutputs(fn):
     pix2 = pix2[mask]; z_comp = z_comp[mask]; file_name = file_name[mask]; 
     veeper_ions = veeper_ions[mask]; rely = rely[mask]; comment = comment[mask];
 
-
-    output_fn = open(fn, 'w')
+    output_fn = open('%s/cleanVPoutput.dat'%(os.path.dirname(fn)), 'w')
     output_fn.write('specfile|restwave|zsys|col|sigcol|bval|sigbval|vel|sigvel|nflag|bflag|vflag|vlim1|vlim2|wobs1|wobs2|pix1|pix2|z_comp|trans|rely|comment\n')
     for i in range(len(restwaves)):
-        output_fn.write('%s|%8.3f|%0.2f|%6.3f|%6.3f|%6.3f|%6.3f|%6.3f|%6.3f|%i|%i|%i|%0.1f|%0.1f|%0.6f|%0.6f|%5i|%5i|%0.6f|%5s|%s|%s\n'%\
+        output_fn.write('%s|%8.3f|%0.2f|%6.3f|%6.3f|%6.3f|%6.3f|%8.3f|%6.3f|%i|%i|%i|%6.1f|%5.1f|%0.6f|%0.6f|%5i|%5i|%0.6f|%5s|%4s|%s\n'%\
                     (file_name[i], restwaves[i], zsys[i], cols[i], sigcols[i], bvals[i], sigbvals[i], vels[i], sigvels[i], \
                      nflag[i], bflag[i], vflag[i], vlim1[i], vlim2[i], wobs1[i], wobs2[i], pix1[i], pix2[i], z_comp[i], 
                      veeper_ions[i], rely[i], comment[i]))
@@ -35,8 +34,11 @@ def clean_compiled_VPoutputs(fn):
 spec_files = glob.glob('../../data/analyzed_spectra/COS-FUV*')
 for spec in spec_files:
     fn = '%s/compiledVPoutputs.dat'%(spec)
-    original_fn = '%s/originalVPoutputs.dat'%(spec)
-    if not os.path.isfile(original_fn):
-        shutil.copy(fn, original_fn)
-    clean_compiled_VPoutputs(fn)
-
+    if os.path.isfile(fn):
+        if os.path.isfile('%s/cleanVPoutput.dat'%(os.path.dirname(fn))):
+            print('Warning: %s/cleanVPoutput.dat exists and may have additional O VI info. Skipping for now\n'%(os.path.basename(spec)))
+        else:
+            print('Cleaning %s/compiledVPoutputs.dat\n'%(os.path.basename(spec)))
+            clean_compiled_VPoutputs(fn)
+    else:
+        print('Skipping %s'%(os.path.basename(speec)))

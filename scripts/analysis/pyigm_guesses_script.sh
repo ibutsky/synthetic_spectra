@@ -31,7 +31,8 @@ while [ $ray_id -lt $end_ray_id ]; do
     # run pyigm_igmguesses 
     pyigm_igmguesses $basename"_ibnorm.fits" -o $basename"_lineids.json"
     pyigm_igmguesses $basename"_ibnorm.fits" -p $basename"_lineids.json" -o $basename"_lineids.json"
-    # list all .joebvp files in a file named "flist"
+    # fix all .joebvp files then list them in a file named "flist"
+    python ../fix_joebvp_files.py $redshift
     ls *.joebvp >>flist
     # Next radius.
     cd ../

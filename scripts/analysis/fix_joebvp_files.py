@@ -21,10 +21,12 @@ def fix_joebvp_file(fn, redshift):
     np.loadtxt(fn, unpack=True, skiprows = 1, usecols = (0, 14, 15, 16), dtype = 'str', delimiter = '|')
 
     if not isinstance(restwaves, np.ndarray):
-        restwaves  = [restwaves]; cols = [cols]; bvals = [bvals]; nflag = [nflag]; 
-        bflag      = [bflag];   vflag = [vflag]; vlim1 = [vlim1]; vlim2 = [vlim2]; 
-        z_comp     = [z_comp]; file_name = [file_name]; veeper_ions = [veeper_ions]; 
-        rely = [rely]; comment = [comment];
+        restwaves  = np.array([restwaves]); cols = np.array([cols]); bvals = np.array([bvals]); 
+        nflag = np.array([nflag]);  bflag = np.array([bflag]); vflag = np.array([vflag]); 
+        vlim1 = np.array([vlim1]);  vlim2 = np.array([vlim2]); z_comp = np.array([z_comp]); 
+        wobs1 = np.array([wobs1]); wobs2 = np.array([wobs2]);
+        file_name = np.array([file_name]); veeper_ions = np.array([veeper_ions]); 
+        rely = np.array([rely]); comment = np.array([comment]);
 
     zsys = redshift*np.ones(len(restwaves))    
     vels = c * ((1 + z_comp) / (1 + zsys) - 1)

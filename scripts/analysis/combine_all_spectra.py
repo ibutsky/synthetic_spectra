@@ -28,7 +28,7 @@ os.chdir(work_dir)
 dummy = -9999.
 
 
-spec_files = glob.glob('COS-FUV*')
+spec_files = glob.glob('COS-FUV_P0_z0.25*')
 for spec in spec_files:
     print(spec)
     if not os.path.isdir(spec) or not spa.spec_ready_for_analysis(spec):
@@ -37,7 +37,7 @@ for spec in spec_files:
 
     model, redshift, impact, ray_id = spa.extract_spec_info(spec)
 
-    veeper_fn = '%s/compiledVPoutputs.dat'%(spec)
+    veeper_fn = '%s/cleanVPoutput.dat'%(spec)
     json_fn = '%s/%s_lineids.json'%(spec, spec)
     json_out = '%s/json_eqw.dat'%(spec)
     aodm_fn = '%s/%s_ibnorm.fits'%(spec, spec)
@@ -120,8 +120,6 @@ for spec in spec_files:
             lncol_list    = np.append(lncol_list,         num_comps*[lncol[0]])
             siglncol_list = np.append(siglncol_list,   num_comps*[siglncol[0]])
             
-print(label_list)
-print(len(label_list), len(model_list))
 dataset_names = ['impact', 'ray_id', 'redshift', 'restwave', 'col_veeper', 'col_err_veeper', 'bval', \
                   'bval_err', 'vel', 'vel_err', 'flag', 'eqw_aodm', 'eqw_err_aodm', 'col_aodm', \
                    'col_err_aodm', 'col_json', 'col_err_json', 'eqw_json', 'eqw_err_json']

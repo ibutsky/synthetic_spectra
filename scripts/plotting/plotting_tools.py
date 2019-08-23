@@ -160,8 +160,8 @@ def plot_multipanel_scatter(ion_list, xfield = 'impact', yfield = 'col', nrows =
     if ax is None:
         fig, ax = plt.subplots(nrows = nrows, ncols = ncols, figsize=(4*ncols, 3.8*nrows), sharex = True, sharey = False)
     xlims, ylims, xlabel, ylabel = plot_details(xfield, yfield)
-    if nrows == 1: 
-        ax = [ax, ax]
+#    if nrows == 1: 
+#        ax = [ax, ax]
 
     if compare == 'model':
         models = ['P0', 'tempest']
@@ -172,7 +172,7 @@ def plot_multipanel_scatter(ion_list, xfield = 'impact', yfield = 'col', nrows =
         marker_styles = ['s', 'o']
 
     elif compare == 'ovi':
-        models = [None, None, None]
+        models = ['P0', 'P0', 'P0']
         ovi_labels = ['broad', 'narrow', 'nolow']
         colors = ['green', 'orange', 'purple']
         labels = ['Broad', 'Narrow', 'No-low']
@@ -181,22 +181,32 @@ def plot_multipanel_scatter(ion_list, xfield = 'impact', yfield = 'col', nrows =
         models = [model]
         colors = [color]
         labels = [label]
+        ovi_labels = [ovi_label]
         marker_styles = ['s']
     
-    for model, label, color, marker_style in zip (models, labels, colors, marker_styles):
+    for model, ovi_label, label, color, marker_style in zip (models, ovi_labels, labels, colors, marker_styles):
         for i, ion in enumerate(ion_list):
             ion = ion.replace(" ", "")
             row = int(i / ncols)
             col = i - row*ncols
-        
-            plot_data_scatter(ion, xfield = xfield, yfield = yfield, ax = ax[row][col], \
+            
+            if nrows == 1: 
+                if ncols == 1:
+                    figax = ax
+                else:
+                    figax = ax[col]
+            else:
+                figax = ax[row][col]
+            
+
+            plot_data_scatter(ion, xfield = xfield, yfield = yfield, ax = figax, ovi_label = ovi_label, \
                               model = model, redshift = redshift, use_filtered = use_filtered,\
                               color = color, label = label, marker_size = marker_size, marker_style = marker_style,\
                               annotate_ion = annotate_ion, axis_labels = False, set_ylim = set_ylim)
             
-            if row == nrows - 1:
+            if row == nrows - 1 and ncols > 1:
                 ax[row][col].set_xlabel(xlabel)
-            if col == 0:
+            if col == 0 and ncols > 1:
                 ax[row][col].set_ylabel(ylabel)
 
     

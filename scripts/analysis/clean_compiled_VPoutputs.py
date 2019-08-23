@@ -41,4 +41,4 @@ for spec in spec_files:
             print('Cleaning %s/compiledVPoutputs.dat\n'%(os.path.basename(spec)))
             clean_compiled_VPoutputs(fn)
     else:
-        print('Skipping %s'%(os.path.basename(speec)))
+        print('Skipping %s'%(os.path.basename(spec)))

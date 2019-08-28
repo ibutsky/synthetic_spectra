@@ -5,31 +5,30 @@ import numpy as np
 
 
 
-def load_data(property_list, fn = None, use_filtered = True, ovi_label = None,
-                  ion = None, model = None, ray_id = None, redshift = None):
+def load_data(property_list, fn = None, ovi_label = None,
+                  ion = None, model = None, ray_id = None, redshift = None, flag = None):
     if fn == None:
-        if use_filtered:
-            fn = '../../data/analyzed_spectra/filtered_spectra.h5'
-        else:
-            fn = '../../data/analyzed_spectra/combined_spectra.h5'
+        fn = '../../data/analyzed_spectra/combined_spectra.h5'
 
     data = h5.File(fn, 'r')
     
     # always True
-    mask = data['impact'].value > -99
+    mask = data['impact'][()]  > -99
     if redshift:
-        mask = mask & (data['redshift'].value == redshift)
+        mask = mask & (data[('redshift')][()]      == redshift)
     if model:
-        mask = mask & (data['model'   ].value ==    model)
+        mask = mask & (data[('model')][()]  ==    model)
     if ray_id:
-        mask = mask & (data['ray_id'  ].value ==   ray_id)
+        mask = mask & (data['ray_id'  ][()]  ==   ray_id)
     if ion:
-        mask = mask & (data['ion'     ].value ==      ion)
+        mask = mask & (data['ion'     ][()]  ==      ion)
     if ovi_label:
-        mask = mask & (data['label'   ].value == ovi_label)
+        mask = mask & (data['label'   ][()]  == ovi_label)
+    if flag:
+        mask = mask & (daga['flag'    ][()]  ==      flag)
     return_array = []
     for prop in property_list:
-        return_array.append(np.array((data[prop].value)[mask]))
+        return_array.append(np.array((data[prop][()] )[mask]))
 
     data.close()
     return np.array(return_array)
@@ -56,7 +55,7 @@ def plot_details(xfield, yfield):
     return xlims, ylims, xlabel, ylabel
 
 def plot_data_scatter(ion, xfield = 'impact', yfield = 'col', model = None, ovi_label = None,\
-                           use_filtered = True, redshift = None, ax = None, color = 'black', \
+                          redshift = None, ax = None, color = 'black', \
                           label = None, annotate_ion = True, axis_labels = True, marker_size = 20, \
                           marker_style = 's', set_ylim = True):
 
@@ -70,18 +69,17 @@ def plot_data_scatter(ion, xfield = 'impact', yfield = 'col', model = None, ovi_
     
     field_list = [xfield, xerrfield, yfield, yerrfield, flagfield]
 
-    xscatter, xerr, yscatter, yerr, flagscatter = load_data(field_list, ion = ion, use_filtered = use_filtered,\
+    xscatter, xerr, yscatter, yerr, flagscatter = load_data(field_list, ion = ion, \
                                       model = model, redshift=redshift, ovi_label = ovi_label)
     
     
-    # If using filtered data, only keep data points that are measured (above -9999)
-    if use_filtered:
-        mask = (xscatter > -9999.) & (yscatter > -9999)
-        xscatter = xscatter[mask]
-        xerr     = xerr[mask]
-        yscatter = yscatter[mask]
-        yerr     = yerr[mask]
-        flagscatter = flagscatter[mask]
+    
+    mask = (xscatter > -9999.) & (yscatter > -9999)
+    xscatter = xscatter[mask]
+    xerr     = xerr[mask]
+    yscatter = yscatter[mask]
+    yerr     = yerr[mask]
+    flagscatter = flagscatter[mask]
 
 
     if ax == None:
@@ -96,20 +94,13 @@ def plot_data_scatter(ion, xfield = 'impact', yfield = 'col', model = None, ovi_
 
     
     if yfield == 'col':
-        if not use_filtered:
-            yscatter_lim, yscatter_limerr  = load_data(['col_aodm', 'col_aodm_err'], ion = ion, model = model, \
-                                     redshift = redshift, use_filtered = use_filtered)
-            mask = (flagscatter  != 1)
-            yscatter[mask] = yscatter_lim[mask]
-            yerr[mask]     = yscatter_limerr[mask]
-
         yscatter = 10**yscatter
         yerr = 10**yerr
         ax.set_yscale('log')
         
-        sat = flagscatter == 9
+        sat = flagscatter == 2
         ax.scatter(xscatter[sat], yscatter[sat],  marker = "^", edgecolor = 'black', facecolor = color, s = marker_size)
-        nondetect = flagscatter == 5
+        nondetect = flagscatter == 3
         ax.scatter(xscatter[nondetect], yscatter[nondetect],  marker = "v", edgecolor = 'black', facecolor = color, s = marker_size)
         detect = flagscatter == 1
         ax.scatter(xscatter[detect], yscatter[detect],  marker = marker_style, edgecolor = 'black', facecolor = color, label = label, s = marker_size)
@@ -154,7 +145,7 @@ def annotate_ion_name(ax, ion_name, fontsize = 18, x_factor = 0.85, y_factor = 0
     
 def plot_multipanel_scatter(ion_list, xfield = 'impact', yfield = 'col', nrows = 2, fig = None, ax = None, \
                                 model = None, redshift = None, ovi_label = None, marker_size = 20, color = 'black', \
-                                label = None, annotate_ion = True, compare = None, use_filtered = True, set_ylim = True):
+                                label = None, annotate_ion = True, compare = None, set_ylim = True):
 
     ncols = int((len(ion_list) + nrows - 1)/ nrows)
     if ax is None:
@@ -200,7 +191,7 @@ def plot_multipanel_scatter(ion_list, xfield = 'impact', yfield = 'col', nrows =
             
 
             plot_data_scatter(ion, xfield = xfield, yfield = yfield, ax = figax, ovi_label = ovi_label, \
-                              model = model, redshift = redshift, use_filtered = use_filtered,\
+                              model = model, redshift = redshift, \
                               color = color, label = label, marker_size = marker_size, marker_style = marker_style,\
                               annotate_ion = annotate_ion, axis_labels = False, set_ylim = set_ylim)
             

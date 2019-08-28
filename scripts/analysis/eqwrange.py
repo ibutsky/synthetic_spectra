@@ -232,14 +232,15 @@ def find_ion_limits(ion, fn, restwave = 0, redshift = 0, \
 
 
 
-def json_eqw(json_file, fits_file, outfile):
-	ion_name = []; restwave = []; eqw = []; eqw_err = []; col = []; col_err = []
+def json_eqw(json_file, fits_file, outfile, overwrite = False):
+	ion_name = []; restwave = []; col = []; col_err = []; flag = []; zcomp = [];
 	if not os.path.isfile(json_file):
-		return np.array(ion_name), np.array(restwave), np.array(eqw), np.array(eqw_err), np.array(col), np.array(col_err)
+		return np.array(ion_name), np.array(restwave), np.array(col), \
+		    np.array(col_err), np.array(flag), np.array(zcomp)
 	
-	if not os.path.isfile(outfile):
+	if not os.path.isfile(outfile) or overwrite == True:
 		out =  open(outfile, 'w')
-		out.write('#ion_name, restwave, EQW, EQW_err, logN, logN_err\n')
+		out.write('#ion_name, restwave, logN, logN_err, flag_N, zcomp\n')
 
 		with open(json_file) as data_file:
 			igmg_dict = json.load(data_file)
@@ -258,27 +259,31 @@ def json_eqw(json_file, fits_file, outfile):
 
 				ion_name.append(al.ion_name)
 				restwave.append(al.wrest.value)
-				eqw.append(al.attrib['EW'].value)
-				eqw_err.append(al.attrib['sig_EW'].value)
 				col.append(al.attrib['logN'])
-				col_err.append(al.attrib['sig_logN'])
-				
-				out.write('%s %f %e %e %e %e\n'%(al.ion_name, al.wrest.value, al.attrib['EW'].value, \
-						     al.attrib['sig_EW'].value, al.attrib['logN'], al.attrib['sig_logN']))
+				sig_logN = al.attrib['sig_logN']
+				if np.isnan(sig_logN):
+					sig_logN = 0.0
+				col_err.append(sig_logN)
+				flag.append(al.attrib['flag_N'])
+				zcomp.append(al.z)
+
+				out.write('%s\t%f\t%e\t%e\t%d\t%0.6f\n'%(al.ion_name, al.wrest.value, \
+						   al.attrib['logN'], sig_logN, al.attrib['flag_N'], al.z))
 		out.close()
 	if os.path.isfile(outfile) and len(open(outfile).readlines()) > 1:
 		ion_name = np.loadtxt(outfile, unpack = True, skiprows = 1, usecols = 0, dtype = 'str')
-		restwave, eqw, eqw_err, col, col_err = np.loadtxt(outfile, unpack = True, skiprows = 1, usecols =  (1, 2, 3, 4, 5))
+		restwave, col, col_err, flag, zcomp = \
+		    np.loadtxt(outfile, unpack = True, skiprows = 1, usecols =  (1, 2, 3, 4, 5))
 
-	return np.array(ion_name), np.array(restwave), np.array(eqw), np.array(eqw_err), np.array(col), np.array(col_err)
+	return np.array(ion_name), np.array(restwave), np.array(col), np.array(col_err), np.array(flag), np.array(zcomp)
 
 
 		
 
 def load_veeper_fit(veeper_fn):
 	if os.path.isfile(veeper_fn):
-		restwaves, cols, sigcols, bvals, sigbvals, vels, sigvels = \
-		    np.loadtxt(veeper_fn, unpack=True, skiprows = 1, usecols = (1,3,4,5,6,7,8), delimiter = '|')
+		restwaves, cols, sigcols, bvals, sigbvals, vels, sigvels, zcomps = \
+		    np.loadtxt(veeper_fn, unpack=True, skiprows = 1, usecols = (1,3,4,5,6,7,8, 18), delimiter = '|')
 		veeper_ions, labels = np.loadtxt(veeper_fn, unpack=True, skiprows = 1, \
 						 usecols = (19, 21), dtype = 'str', delimiter = '|')
 		
@@ -287,7 +292,7 @@ def load_veeper_fit(veeper_fn):
 			cols =  np.array([cols]); sigcols =  np.array([sigcols]); 
 			bvals =  np.array([bvals]); sigbvals =  np.array([sigbvals]);
 			vels =  np.array([vels]); sigvels =  np.array([sigvels]); 
-			labels =  np.array([labels]);
+			labels =  np.array([labels]); zcomps = np.array([zcomps]);
 
 		for i in range(len(veeper_ions)):
 			temp    = veeper_ions[i]
@@ -304,7 +309,8 @@ def load_veeper_fit(veeper_fn):
 			vels = vels[mask]
 			sigvels = sigvels[mask]
 			labels = labels[mask]
+			zcomps = zcomps[mask]
 	else:
                 restwaves = []; cols = []; sigcols = []; bvals = []; sigbvals = [];
-                vels      = []; sigvels = []; flags = []; veeper_ions = []; labels = [];
-	return veeper_ions, restwaves, cols, sigcols, bvals, sigbvals, vels, sigvels, labels
+                vels      = []; sigvels = []; flags = []; veeper_ions = []; labels = []; zcomps = [];
+	return veeper_ions, restwaves, cols, sigcols, bvals, sigbvals, vels, sigvels, labels, zcomps

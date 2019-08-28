@@ -164,10 +164,10 @@ def plot_multipanel_scatter(ion_list, xfield = 'impact', yfield = 'col', nrows =
 
     elif compare == 'ovi':
         models = ['P0', 'P0', 'P0']
-        ovi_labels = ['broad', 'narrow', 'nolow']
-        colors = ['green', 'orange', 'purple']
-        labels = ['Broad', 'Narrow', 'No-low']
-        marker_styles = ['s', 'D', 'o']
+        ovi_labels = ['nolow', 'broad', 'narrow']
+        colors = ['purple', 'green', 'orange']
+        labels = ['No-low', 'Broad', 'Narrow']
+        marker_styles = ['s', 's', 's']
     else:
         models = [model]
         colors = [color]

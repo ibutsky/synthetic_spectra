@@ -28,7 +28,7 @@ model_list   = [];   redshift_list = [];   impact_list = [];     label_list = []
 col_list     = [];     sigcol_list = [];     bval_list = [];   sigbval_list = [];
 vel_list     = [];     sigvel_list = [];      ion_list = [];    ray_id_list = []; 
 restwave_list = []; flag_aodm_list = [];     flag_list = [];
-
+total_col_list = []; total_colerr_list = [];
 
 # go to the directory where the analyzed spectra reside
 os.chdir(work_dir)
@@ -49,23 +49,26 @@ for spec in spec_files:
     json_out = '%s/json_eqw.dat'%(spec)
     aodm_fn = '%s/%s_ibnorm.fits'%(spec, spec)
     aodm_plot_dir = '%s/aodm_plots'%(spec)
-
+    
     veeper_ions, veeper_restwaves, veeper_cols, veeper_colerr, veeper_bvals, \
         veeper_bvalerr, veeper_vels, veeper_velerr, veeper_label, veeper_z =  eqw.load_veeper_fit(veeper_fn)
     json_ions, json_restwaves, json_cols, json_colerr, json_flag, json_z = \
         eqw.json_eqw(json_fn, aodm_fn, json_out, overwrite = False)
 
-
+    
     for ion in master_ion_list:
         rw = spa.restwave(ion, redshift) 
         # assume the number of components is 1, to start
         num_comps = 1
         mask = (veeper_ions == ion)
         if ion in veeper_ions:
+            ncomp = 0
+            total_col = 0
+            total_sqerr = 0
             for i in range(len(veeper_ions[mask])):
                 z_closest = find_closest_z(veeper_z[mask][i], json_z[json_ions == ion])
                 json_mask = (json_ions == ion) & (json_z == z_closest)
-            
+                ncomp += 1
                 if 1 in json_flag[json_mask]:
                     col = veeper_cols[mask][i]
                     colerr = veeper_colerr[mask][i]
@@ -80,6 +83,9 @@ for spec in spec_files:
                     col = min(json_cols[json_mask])
                     colerr = 0
                     flag = 3
+
+                total_col += np.power(10, col)
+                total_sqerr += np.power(10, colerr)**2
  
                 restwave_list = np.append(restwave_list,  veeper_restwaves[mask])
                 ion_list      = np.append(ion_list,       ion)
@@ -98,6 +104,8 @@ for spec in spec_files:
                 ray_id_list      = np.append(ray_id_list,    ray_id)
                 redshift_list    = np.append(redshift_list,  redshift)
 
+            total_col_list = np.append(total_col_list, ncomp*[np.log10(total_col)])
+            total_colerr_list = np.append(total_colerr_list, ncomp*[np.log10(np.sqrt(total_sqerr))])
         else:
 
             eqws, sigeqw, lncol, siglncol, flag_aodm, velcent, velwidth = \
@@ -108,6 +116,8 @@ for spec in spec_files:
             ion_list      = np.append(ion_list,         ion)
             col_list      = np.append(col_list,       lncol)
             sigcol_list   = np.append(sigcol_list, siglncol)
+            total_col_list = np.append(total_col_list, siglncol)
+            total_colerr_list = np.append(total_colerr_list, siglncol)
             bval_list     = np.append(bval_list,     dummy)
             sigbval_list  = np.append(sigbval_list,  dummy)
             vel_list      = np.append(vel_list,      dummy)
@@ -120,10 +130,9 @@ for spec in spec_files:
             redshift_list    = np.append(redshift_list,  redshift)
 
 dataset_names = ['impact', 'ray_id', 'redshift', 'restwave', 'col', 'col_err', 'bval', \
-                  'bval_err', 'vel', 'vel_err', 'flag']
+                  'bval_err', 'vel', 'vel_err', 'flag', 'total_col', 'total_col_err']
 datasets = [impact_list, ray_id_list, redshift_list, restwave_list, col_list, sigcol_list,\
-                bval_list, sigbval_list, vel_list, sigvel_list, \
-                flag_list]
+                bval_list, sigbval_list, vel_list, sigvel_list, flag_list, total_col_list, total_colerr_list]
 
 # first save the numerical data   
 for dset, data in zip(dataset_names, datasets):

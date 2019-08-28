@@ -7,12 +7,13 @@ estd.*
 *.bw.*
 
 plots/
+data/
+mcmc_voigt/
 old/
 pro/
 ColloquiumPlots/
 
 
-*.h5
 *.DS_Store
 *~
 *#

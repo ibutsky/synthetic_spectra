@@ -137,9 +137,9 @@ print(len(impact_list), len(col_list), len(vel_list), len(model_list))
 spec_outfile = h5.File('../../data/analyzed_spectra/filtered_spectra.h5', 'w')
 
 dataset_names = ['impact', 'redshift', 'col', 'col_err', 'bval', 'bval_err', \
-                     'vel', 'vel_err', 'flag']
+                     'vel', 'vel_err', 'flag', 'ray_id']
 datasets = [impact_list, redshift_list, col_list, sigcol_list, bval_list, sigbval_list,\
-                vel_list, sigvel_list,flag_list]
+                vel_list, sigvel_list,flag_list, ray_id_list]
 # first save the numerical data   
 for dset, data in zip(dataset_names, datasets):
     data = data.astype('float64')

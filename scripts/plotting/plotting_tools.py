@@ -55,9 +55,11 @@ def plot_details(xfield, yfield):
     return xlims, ylims, xlabel, ylabel
 
 def plot_data_scatter(ion, xfield = 'impact', yfield = 'col', model = None, ovi_label = None,\
-                          redshift = None, ax = None, color = 'black', \
+                          redshift = None, ax = None, color = 'black', fn =  None, \
                           label = None, annotate_ion = True, axis_labels = True, marker_size = 20, \
                           marker_style = 's', set_ylim = True):
+    if fn == None:
+        fn = '../../data/analyzed_spectra/combined_spectra.h5'
 
     xerrfield = '%s_err'%(xfield)
     yerrfield = '%s_err'%(yfield)
@@ -69,7 +71,7 @@ def plot_data_scatter(ion, xfield = 'impact', yfield = 'col', model = None, ovi_
     
     field_list = [xfield, xerrfield, yfield, yerrfield, flagfield]
 
-    xscatter, xerr, yscatter, yerr, flagscatter = load_data(field_list, ion = ion, \
+    xscatter, xerr, yscatter, yerr, flagscatter = load_data(field_list, ion = ion, fn = fn, \
                                       model = model, redshift=redshift, ovi_label = ovi_label)
     
     
@@ -145,8 +147,10 @@ def annotate_ion_name(ax, ion_name, fontsize = 18, x_factor = 0.85, y_factor = 0
     
 def plot_multipanel_scatter(ion_list, xfield = 'impact', yfield = 'col', nrows = 2, fig = None, ax = None, \
                                 model = None, redshift = None, ovi_label = None, marker_size = 20, color = 'black', \
-                                label = None, annotate_ion = True, compare = None, set_ylim = True):
+                                label = None, annotate_ion = True, compare = None, set_ylim = True, fn = None):
 
+    if fn is None:
+        fn = '../../data/analyzed_spectra/combined_spectra.h5'
     ncols = int((len(ion_list) + nrows - 1)/ nrows)
     if ax is None:
         fig, ax = plt.subplots(nrows = nrows, ncols = ncols, figsize=(4*ncols, 3.8*nrows), sharex = True, sharey = False)
@@ -163,7 +167,9 @@ def plot_multipanel_scatter(ion_list, xfield = 'impact', yfield = 'col', nrows =
         marker_styles = ['s', 'o']
 
     elif compare == 'ovi':
-        models = ['P0', 'P0', 'P0']
+        if model is None:
+            model = 'P0'
+        models = [model, model,  model]
         ovi_labels = ['nolow', 'broad', 'narrow']
         colors = ['purple', 'green', 'orange']
         labels = ['No-low', 'Broad', 'Narrow']
@@ -191,7 +197,7 @@ def plot_multipanel_scatter(ion_list, xfield = 'impact', yfield = 'col', nrows =
             
 
             plot_data_scatter(ion, xfield = xfield, yfield = yfield, ax = figax, ovi_label = ovi_label, \
-                              model = model, redshift = redshift, \
+                              model = model, redshift = redshift, fn = fn, \
                               color = color, label = label, marker_size = marker_size, marker_style = marker_style,\
                               annotate_ion = annotate_ion, axis_labels = False, set_ylim = set_ylim)
             

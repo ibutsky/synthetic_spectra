@@ -11,6 +11,7 @@ import eqwrange as eqw
 import spectrum_analysis_tools as spa
 
 def find_closest_z(z_comp, json_z_list):
+    closest_z = -1
     smallest_diff = 1.
     for z in json_z_list:
         diff = abs(z_comp - z)
@@ -35,7 +36,9 @@ os.chdir(work_dir)
 dummy = -9999.
 
 
-spec_files = glob.glob('COS-FUV_P0_z0.25*')
+spec_files = glob.glob('COS-FUV_*')
+#spec_files = glob.glob('COS-FUV_P0_z0.25_164*')
+
 for spec in spec_files:
     print(spec)
     if not os.path.isdir(spec) or not spa.spec_ready_for_analysis(spec):
@@ -43,7 +46,7 @@ for spec in spec_files:
         continue
 
     model, redshift, impact, ray_id = spa.extract_spec_info(spec)
-
+    
     veeper_fn = '%s/cleanVPoutput.dat'%(spec)
     json_fn = '%s/%s_lineids.json'%(spec, spec)
     json_out = '%s/json_eqw.dat'%(spec)
@@ -67,6 +70,8 @@ for spec in spec_files:
             total_sqerr = 0
             for i in range(len(veeper_ions[mask])):
                 z_closest = find_closest_z(veeper_z[mask][i], json_z[json_ions == ion])
+                if z_closest == -1:
+                    print("WARNING: NO Z_CLOSEST: ", spec, json_z[json_ions == ion])
                 json_mask = (json_ions == ion) & (json_z == z_closest)
                 ncomp += 1
                 if 1 in json_flag[json_mask]:
@@ -87,7 +92,7 @@ for spec in spec_files:
                 total_col += np.power(10, col)
                 total_sqerr += np.power(10, colerr)**2
  
-                restwave_list = np.append(restwave_list,  veeper_restwaves[mask])
+                restwave_list = np.append(restwave_list,  veeper_restwaves[mask][i])
                 ion_list      = np.append(ion_list,       ion)
                 col_list      = np.append(col_list,       col) 
                 sigcol_list   = np.append(sigcol_list, colerr)
@@ -129,6 +134,7 @@ for spec in spec_files:
             ray_id_list      = np.append(ray_id_list,   ray_id)
             redshift_list    = np.append(redshift_list,  redshift)
 
+ 
 dataset_names = ['impact', 'ray_id', 'redshift', 'restwave', 'col', 'col_err', 'bval', \
                   'bval_err', 'vel', 'vel_err', 'flag', 'total_col', 'total_col_err']
 datasets = [impact_list, ray_id_list, redshift_list, restwave_list, col_list, sigcol_list,\
@@ -136,7 +142,7 @@ datasets = [impact_list, ray_id_list, redshift_list, restwave_list, col_list, si
 
 # first save the numerical data   
 for dset, data in zip(dataset_names, datasets):
-    print(dset)
+    print(dset, len(data))
     spec_outfile.create_dataset(dset, data = data)
 
 
@@ -145,7 +151,7 @@ dt = h5.special_dtype(vlen=str)
 dataset_names = ['model', 'ion', 'label']
 datasets = [model_list, ion_list, label_list]
 for dset, data in zip(dataset_names, datasets):
-    print(dset)
+    print(dset, len(data))
     current_dset = spec_outfile.create_dataset(dset, (len(data),), dtype=dt)
     for i in range(len(data)):
         current_dset[i] = data[i].replace(" ", "")

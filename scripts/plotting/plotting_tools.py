@@ -42,7 +42,7 @@ def plot_details(xfield, yfield):
         xlims  = (0.1, 79)
         xlabel = 'Doppler Parameter'
 
-    if yfield == 'col':
+    if yfield == 'col' or yfield == 'total_col':
         ylims = (1e12, 1e16)
         ylabel = 'Ion Column Density (cm$^{-2}$)'
     elif yfield == 'vel':
@@ -95,7 +95,7 @@ def plot_data_scatter(ion, xfield = 'impact', yfield = 'col', model = None, ovi_
         ax.set_ylim(ylims)
 
     
-    if yfield == 'col':
+    if yfield == 'col' or yfield == 'total_col':
         yscatter = 10**yscatter
         yerr = 10**yerr
         ax.set_yscale('log')

@@ -37,7 +37,7 @@ dummy = -9999.
 
 
 spec_files = glob.glob('COS-FUV_*')
-#spec_files = glob.glob('COS-FUV_P0_z0.25_164*')
+#spec_files = glob.glob('COS-FUV_P0_z0.25_72*')
 
 for spec in spec_files:
     print(spec)
@@ -58,6 +58,7 @@ for spec in spec_files:
     json_ions, json_restwaves, json_cols, json_colerr, json_flag, json_z = \
         eqw.json_eqw(json_fn, aodm_fn, json_out, overwrite = False)
 
+    print(json_ions, json_flag)
     
     for ion in master_ion_list:
         rw = spa.restwave(ion, redshift) 

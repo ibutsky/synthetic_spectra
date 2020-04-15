@@ -74,17 +74,21 @@ def return_ion_prefix(ion):
         print(ion)
     return field
 
-def return_field_name(ion, field, full_name = True):
+def return_field_name(ion, field, full_name = True, model = 'tempest'):
     ion_prefix = return_ion_prefix(ion)
     field_name = "%s_%s"%(ion_prefix, field)
     if full_name:
         field_name = ('gas', field_name)
+#        if model == 'tempest' or model == 'stream' or model == 'ad':
+#            field_name = ('gas', field_name)
+#        elif model == 'P0':
+#            field_name = ('Gas', field_name)
     return field_name
 
-def generate_ion_field_list(ion_list, field, full_name = True):
+def generate_ion_field_list(ion_list, field, full_name = True, model = 'tempest'):
     field_name_list = []
     for ion in ion_list:
-        field_name_list.append(return_field_name(ion, field, full_name))
+        field_name_list.append(return_field_name(ion, field, full_name, model = model))
     return field_name_list
                         
 
@@ -162,7 +166,9 @@ def load_r_cdens(fname, ion, underscore = False):
 
 
 def make_projection(ds, axis, ion_fields, center, width):
-    p = ds.proj(ion_fields, axis, weight_field=None, center=center, method='integrate')
+    sp = ds.sphere(center, width)
+    p = ds.proj(ion_fields, axis, weight_field=None, data_source = sp, center=center, method='integrate')
+    print('made_projection')
     return p.to_frb(width, 800, center=center)
 
 

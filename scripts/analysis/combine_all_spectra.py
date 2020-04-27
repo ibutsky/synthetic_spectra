@@ -56,7 +56,7 @@ for spec in spec_files:
     veeper_ions, veeper_restwaves, veeper_cols, veeper_colerr, veeper_bvals, \
         veeper_bvalerr, veeper_vels, veeper_velerr, veeper_label, veeper_z =  eqw.load_veeper_fit(veeper_fn)
     json_ions, json_restwaves, json_cols, json_colerr, json_flag, json_z = \
-        eqw.json_eqw(json_fn, aodm_fn, json_out, overwrite = False)
+        eqw.json_eqw(json_fn, aodm_fn, json_out, overwrite = True)
 
     print(json_ions, json_flag)
     

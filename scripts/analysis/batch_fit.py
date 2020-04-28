@@ -26,7 +26,4 @@ def all_veeper_fit(working_dir = '../../data/analyzed_spectra', joebvp_list = 'f
                 single_veeper_fit(basename, joebvp_list = joebvp_list, force_override = force_override)
     os.chdir(current_dir)
 
-#basename = 'COS-FUV_P0_z0.17_1'
-#single_veeper_fit(basename, force_override = True)
-
 all_veeper_fit()

@@ -5,44 +5,34 @@ import numpy as np
 
 
 
-def load_data(property_list, fn = None, use_filtered = True,
-                  ion = None, orientation = None, model = None, impact = None, time = None):
-
+def load_data(property_list, fn = None, ovi_label = None,
+                  ion = None, model = None, ray_id = None, redshift = None, flag = None):
     if fn == None:
-        if use_filtered:
-            fn = '../../data/analyzed_spectra/filtered_spectra.h5'
-        else:
-            fn = '../../data/analyzed_spectra/combined_spectra.h5'
+        fn = '../../data/analyzed_spectra/combined_spectra.h5'
 
     data = h5.File(fn, 'r')
     
-  #  mask = len(data['impact'].value)* [True]
-    mask = data['impact'].value > -99
-    if orientation:
-        mask = mask & (data['orientation'].value == orientation)
+    # always True
+    mask = data['impact'][()]  > -99
+    if redshift:
+        mask = mask & (data[('redshift')][()]      == redshift)
     if model:
-        mask = mask & (data['model'      ].value ==       model)
-    if impact:
-        mask = mask & (data['impact'     ].value ==      impact)
-    if time:
-        mask = mask & (data['time'       ].value ==        time)
+        mask = mask & (data[('model')][()]  ==    model)
+    if ray_id:
+        mask = mask & (data['ray_id'  ][()]  ==   ray_id)
     if ion:
-        mask = mask & (data['ion'        ].value ==         ion)
-
+        mask = mask & (data['ion'     ][()]  ==      ion)
+    if ovi_label:
+        mask = mask & (data['label'   ][()]  == ovi_label)
+    if flag:
+        mask = mask & (daga['flag'    ][()]  ==      flag)
     return_array = []
     for prop in property_list:
-        return_array.append(np.array((data[prop].value)[mask]))
+        return_array.append(np.array((data[prop][()] )[mask]))
 
     data.close()
     return np.array(return_array)
 
-
-def apply_column_limits(flag, cols, colerrs, lims, limerrs):
-    mask = flag > 8  # check this value
-    cols[mask] = lims[mask]
-    print(len(cols[mask]))
-    colerrs[mask] = np.zeros(len(cols[mask]))
-    return cols, colerrs
 
 def plot_details(xfield, yfield):
     if xfield == 'impact':
@@ -52,11 +42,11 @@ def plot_details(xfield, yfield):
         xlims  = (0.1, 79)
         xlabel = 'Doppler Parameter'
 
-    if yfield == 'col':
+    if yfield == 'col' or yfield == 'total_col':
         ylims = (1e12, 1e16)
         ylabel = 'Ion Column Density (cm$^{-2}$)'
     elif yfield == 'vel':
-        ylims  = (-210, 210)
+        ylims  = (-225, 225)
         ylabel = 'Velocity Offset (km / s)'
     elif yfield == 'bval':
         ylims  = (0.1, 79)
@@ -64,34 +54,34 @@ def plot_details(xfield, yfield):
         
     return xlims, ylims, xlabel, ylabel
 
-def plot_data_scatter(ion, xfield = 'impact', yfield = 'col', model = None, orientation = None, \
-                           use_filtered = True, time = None, impact = None, ax = None, color = 'black', \
+def plot_data_scatter(ion, xfield = 'impact', yfield = 'col', model = None, ovi_label = None,\
+                          redshift = None, ax = None, color = 'black', fn =  None, \
                           label = None, annotate_ion = True, axis_labels = True, marker_size = 20, \
-                          set_ylim = True):
+                          marker_style = 's', set_ylim = True):
+    if fn == None:
+        fn = '../../data/analyzed_spectra/combined_spectra.h5'
 
-    xerrfield = '%serr'%(xfield)
-    yerrfield = '%serr'%(yfield)
+    xerrfield = '%s_err'%(xfield)
+    yerrfield = '%s_err'%(yfield)
     
     if xfield == 'impact':
         xerrfield = 'impact'
-    if use_filtered:
-        flagfield = 'flag'
-    else:
-        flagfield = 'flag_aodm'
+
+    flagfield = 'flag'
+    
     field_list = [xfield, xerrfield, yfield, yerrfield, flagfield]
 
-    xscatter, xerr, yscatter, yerr, flagscatter = load_data(field_list, ion = ion, use_filtered = use_filtered,\
-                                      model = model, orientation = orientation, impact = impact, time = time)
+    xscatter, xerr, yscatter, yerr, flagscatter = load_data(field_list, ion = ion, fn = fn, \
+                                      model = model, redshift=redshift, ovi_label = ovi_label)
     
     
-    # If using filtered data, only keep data points that are measured (above -9999)
-    if use_filtered:
-        mask = (xscatter > -9999.) & (yscatter > -9999)
-        xscatter = xscatter[mask]
-        xerr     = xerr[mask]
-        yscatter = yscatter[mask]
-        yerr     = yerr[mask]
-        flagscatter = flagscatter[mask]
+    
+    mask = (xscatter > -9999.) & (yscatter > -9999)
+    xscatter = xscatter[mask]
+    xerr     = xerr[mask]
+    yscatter = yscatter[mask]
+    yerr     = yerr[mask]
+    flagscatter = flagscatter[mask]
 
 
     if ax == None:
@@ -105,24 +95,17 @@ def plot_data_scatter(ion, xfield = 'impact', yfield = 'col', model = None, orie
         ax.set_ylim(ylims)
 
     
-    if yfield == 'col':
-        if not use_filtered:
-            yscatter_lim, yscatter_limerr  = load_data(['col_aodm', 'col_aodm_err'], ion = ion, model = model, \
-                                     orientation = orientation, impact = impact, time = time, use_filtered = use_filtered)
-            mask = (flagscatter  != 1)
-            yscatter[mask] = yscatter_lim[mask]
-            yerr[mask]     = yscatter_limerr[mask]
-
+    if yfield == 'col' or yfield == 'total_col':
         yscatter = 10**yscatter
         yerr = 10**yerr
         ax.set_yscale('log')
         
-        sat = flagscatter == 9
-        ax.scatter(xscatter[sat], yscatter[sat],  marker = "^", edgecolor = color, facecolor = 'white', s = marker_size)
-        nondetect = flagscatter == 5
-        ax.scatter(xscatter[nondetect], yscatter[nondetect],  marker = "v", edgecolor = color, facecolor = 'white', s = marker_size)
+        sat = flagscatter == 2
+        ax.scatter(xscatter[sat], yscatter[sat],  marker = "^", edgecolor = 'black', facecolor = color, s = marker_size)
+        nondetect = flagscatter == 3
+        ax.scatter(xscatter[nondetect], yscatter[nondetect],  marker = "v", edgecolor = 'black', facecolor = color, s = marker_size)
         detect = flagscatter == 1
-        ax.scatter(xscatter[detect], yscatter[detect],  marker = "s", edgecolor = color, facecolor = 'white', label = label, s = marker_size)
+        ax.scatter(xscatter[detect], yscatter[detect],  marker = marker_style, edgecolor = 'black', facecolor = color, label = label, s = marker_size)
         ax.errorbar(xscatter[detect], yscatter[detect], yerr = yerr[detect], color = 'black', linestyle = '')
 
         
@@ -163,51 +146,64 @@ def annotate_ion_name(ax, ion_name, fontsize = 18, x_factor = 0.85, y_factor = 0
 
     
 def plot_multipanel_scatter(ion_list, xfield = 'impact', yfield = 'col', nrows = 2, fig = None, ax = None, \
-                                model = None, orientation = None, time = None, impact = None, marker_size = 20,\
-                                color = 'black', label = None, annotate_ion = True, compare = None, use_filtered = True, 
-                            set_ylim = True):
+                                model = None, redshift = None, ovi_label = None, marker_size = 20, color = 'black', \
+                                label = None, annotate_ion = True, compare = None, set_ylim = True, fn = None):
+
+    if fn is None:
+        fn = '../../data/analyzed_spectra/combined_spectra.h5'
     ncols = int((len(ion_list) + nrows - 1)/ nrows)
     if ax is None:
         fig, ax = plt.subplots(nrows = nrows, ncols = ncols, figsize=(4*ncols, 3.8*nrows), sharex = True, sharey = False)
     xlims, ylims, xlabel, ylabel = plot_details(xfield, yfield)
-    if nrows == 1: 
-        ax = [ax, ax]
+#    if nrows == 1: 
+#        ax = [ax, ax]
 
     if compare == 'model':
-        models = ['anisd', 'stream']
-        orientations = [None, None]
+        models = ['P0', 'tempest']
+        ovi_labels = [None, None]
         colors = ['amber', 'windows blue']
         colors = sns.xkcd_palette(colors)
-        labels = ['Diffusion', 'Streaming']
+        labels = ['Patient 0', 'Tempest']
+        marker_styles = ['s', 'o']
 
-    elif compare == 'orientation':
-        models = [None, None, None]
-        orientations = ['face', 'edge_theta0', 'edge_theta1.0']
-        colors = ['pale red', 'medium green', 'denim blue']
-        colors = sns.xkcd_palette(colors)
-        labels = ['face-on', 'theta = 0', 'theta = 1']
-
+    elif compare == 'ovi':
+        if model is None:
+            model = 'P0'
+        models = [model, model,  model]
+        ovi_labels = ['nolow', 'broad', 'narrow']
+        colors = ['purple', 'green', 'orange']
+        labels = ['No-low', 'Broad', 'Narrow']
+        marker_styles = ['s', 's', 's']
     else:
         models = [model]
-        orientations = [orientation]
         colors = [color]
         labels = [label]
+        ovi_labels = [ovi_label]
+        marker_styles = ['s']
     
-    for orientation, model, label, color in zip (orientations, models, labels, colors):
+    for model, ovi_label, label, color, marker_style in zip (models, ovi_labels, labels, colors, marker_styles):
         for i, ion in enumerate(ion_list):
             ion = ion.replace(" ", "")
             row = int(i / ncols)
             col = i - row*ncols
-        
-        
-            plot_data_scatter(ion, xfield = xfield, yfield = yfield, ax = ax[row][col], \
-                              model = model, orientation = orientation, time = time, use_filtered = use_filtered,\
-                              impact = impact, color = color, label = label, marker_size = marker_size,\
+            
+            if nrows == 1: 
+                if ncols == 1:
+                    figax = ax
+                else:
+                    figax = ax[col]
+            else:
+                figax = ax[row][col]
+            
+
+            plot_data_scatter(ion, xfield = xfield, yfield = yfield, ax = figax, ovi_label = ovi_label, \
+                              model = model, redshift = redshift, fn = fn, \
+                              color = color, label = label, marker_size = marker_size, marker_style = marker_style,\
                               annotate_ion = annotate_ion, axis_labels = False, set_ylim = set_ylim)
             
-            if row == nrows - 1:
+            if row == nrows - 1 and ncols > 1:
                 ax[row][col].set_xlabel(xlabel)
-            if col == 0:
+            if col == 0 and ncols > 1:
                 ax[row][col].set_ylabel(ylabel)
 
     

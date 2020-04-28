@@ -11,8 +11,7 @@ from pyigm.guis import igmguesses
 from linetools.spectra.io import readspec
 
 
-sys.path.append('../plotting/')
-import spec_helper_functions as shf
+import spectrum_analysis_tools as spa
 
 # inwave = REST wavelength for rest-frame EW; observed wavelength for observed EW
 # inspec = flux
@@ -192,13 +191,13 @@ def eqwrange(ion, wave, spec, error, vrange, w0, f0, \
 	return eqw, eqwerr, np.log10(np.abs(col)), np.log10(col+colerr)-np.log10(col), flag, velcent, velwidth
 
 
-def find_ion_limits(ion, fn, ion_list, orientation, model, impact, restwave = 0, redshift = 0,\
+def find_ion_limits(ion, fn, restwave = 0, redshift = 0, \
 			    vrange = (-200, 200), silent = 0, plots = 0, plot_dir = '.', sat_limit = 0.1):
     ion_names = np.loadtxt('../../dla.lst', unpack=True, skiprows = 1, usecols=(1), dtype = 'str')
     ion_wls, ion_fs = np.loadtxt('../../dla.lst', unpack=True, skiprows = 1,usecols=(0, 3))
     ion_wls_int = ion_wls.astype(int)
     
-    wl, flux, ferr = shf.load_spec_from_fits(fn)
+    wl, flux, ferr = spa.load_spec_from_fits(fn)
     
     eqw_list = []
     eqwerr_list = []
@@ -207,45 +206,41 @@ def find_ion_limits(ion, fn, ion_list, orientation, model, impact, restwave = 0,
     flag_list = []
     velcent_list = []
     velwidth_list = []
-    for ion in ion_list:	    
-	    ion = ion.replace(" ", "")
-	    if restwave == 0:
-		    w0 = shf.restwave(ion, z = 0) # REST wavelength for rest-frame EW; observed wavelength for observed EW   
-		    w_obs = shf.restwave(ion, z = redshift)
-	    else:
-		    w0 = restwave
-		    w_obs = restwave * (redshift + 1)
-	    ion_mask  = (ion_names == ion)
-	    wl_mask =  (ion_wls_int[ion_mask] == int(w0))
-	    f0 = ion_fs[ion_mask][wl_mask][0]
+    
+    ion = ion.replace(" ", "")
+    if restwave == 0:
+	    w0 = spa.restwave(ion, z = 0) # REST wavelength for rest-frame EW; observed wavelength for observed EW   
+	    w_obs = spa.restwave(ion, z = redshift)
+    else:
+	    w0 = restwave
+	    w_obs = restwave * (redshift + 1)
+    ion_mask  = (ion_names == ion)
+    wl_mask =  (ion_wls_int[ion_mask] == int(w0))
+    f0 = ion_fs[ion_mask][wl_mask][0]
 
-	    eqw, eqwerr, col, colerr, flag, velcent, velwidth = eqwrange(ion, wl, flux, ferr, vrange, w_obs, f0, silent=silent, \
+    eqw, eqwerr, col, colerr, flag, velcent, velwidth = eqwrange(ion, wl, flux, ferr, vrange, w_obs, f0, silent=silent, \
 									   plots = plots, plot_dir = plot_dir)
-	    eqw_list.append(eqw)
-	    eqwerr_list.append(eqwerr)
-	    col_list.append(col)
-	    colerr_list.append(colerr)
-	    flag_list.append(flag)
-	    velcent_list.append(velcent)
-	    velwidth_list.append(velwidth)
+    eqw_list.append(eqw)
+    eqwerr_list.append(eqwerr)
+    col_list.append(col)
+    colerr_list.append(colerr)
+    flag_list.append(flag)
+    velcent_list.append(velcent)
+    velwidth_list.append(velwidth)
 
     return eqw_list, eqwerr_list, col_list, colerr_list, flag_list, velcent_list, velwidth_list
 
 
 
-def json_eqw(json_file, fits_file, outfile):
-#	if os.path.isfile(outfile):
-	ion_name = []; restwave = []; eqw = []; eqw_err = []; col = []; col_err = []
-
-	if(False):
-		ion_name = np.loadtxt(outfile, skiprows = 1, usecols = 0, dtype = 'str')
-		restwave, eqw, eqw_err, col, col_err = \
-		    np.loadtxt(outfile, unpack = True, skiprows = 1, usecols =  (1, 2, 3, 4, 5))
+def json_eqw(json_file, fits_file, outfile, overwrite = False):
+	ion_name = []; restwave = []; col = []; col_err = []; flag = []; zcomp = [];
+	if not os.path.isfile(json_file):
+		return np.array(ion_name), np.array(restwave), np.array(col), \
+		    np.array(col_err), np.array(flag), np.array(zcomp)
 	
-	if not os.path.isfile(outfile) and os.path.isfile(json_file):
+	if not os.path.isfile(outfile) or overwrite == True:
 		out =  open(outfile, 'w')
-		out.write('#ion_name, restwave, EQW, EQW_err, logN, logN_err\n')
-		ion_name = []; restwave = []; eqw = []; eqw_err = []; col = []; col_err = []
+		out.write('#ion_name, restwave, logN, logN_err, flag_N, zcomp\n')
 
 		with open(json_file) as data_file:
 			igmg_dict = json.load(data_file)
@@ -258,36 +253,47 @@ def json_eqw(json_file, fits_file, outfile):
 		spec = readspec(fits_file)
 		for i, cc in enumerate(comp_list):
 			for j, al in enumerate(cc._abslines):
-				sys.stdout.flush()
 				al.analy['spec']=spec
 				al.measure_ew()
 				al.measure_aodm()
 
 				ion_name.append(al.ion_name)
 				restwave.append(al.wrest.value)
-				eqw.append(al.attrib['EW'].value)
-				eqw_err.append(al.attrib['sig_EW'].value)
 				col.append(al.attrib['logN'])
-				col_err.append(al.attrib['sig_logN'])
-				
-				out.write('%s %f %e %e %e %e\n'%(al.ion_name, al.wrest.value, al.attrib['EW'].value, \
-						     al.attrib['sig_EW'].value, al.attrib['logN'], al.attrib['sig_logN']))
+				sig_logN = al.attrib['sig_logN']
+				if np.isnan(sig_logN):
+					sig_logN = 0.0
+				col_err.append(sig_logN)
+				flag.append(al.attrib['flag_N'])
+				zcomp.append(al.z)
+
+				out.write('%s\t%f\t%e\t%e\t%d\t%0.6f\n'%(al.ion_name, al.wrest.value, \
+						   al.attrib['logN'], sig_logN, al.attrib['flag_N'], al.z))
 		out.close()
 	if os.path.isfile(outfile) and len(open(outfile).readlines()) > 1:
 		ion_name = np.loadtxt(outfile, unpack = True, skiprows = 1, usecols = 0, dtype = 'str')
-		restwave, eqw, eqw_err, col, col_err = np.loadtxt(outfile, unpack = True, skiprows = 1, usecols =  (1, 2, 3, 4, 5))
+		restwave, col, col_err, flag, zcomp = \
+		    np.loadtxt(outfile, unpack = True, skiprows = 1, usecols =  (1, 2, 3, 4, 5))
 
-	return np.array(ion_name), np.array(restwave), np.array(eqw), np.array(eqw_err), np.array(col), np.array(col_err)
+	return np.array(ion_name), np.array(restwave), np.array(col), np.array(col_err), np.array(flag), np.array(zcomp)
 
 
 		
 
 def load_veeper_fit(veeper_fn):
 	if os.path.isfile(veeper_fn):
-		restwaves, cols, sigcols, bvals, sigbvals, vels, sigvels = \
-		    np.loadtxt(veeper_fn, unpack=True, skiprows = 1, usecols = (1,3,4,5,6,7,8), delimiter = '|')
-		veeper_ions = np.loadtxt(veeper_fn, unpack=True, skiprows = 1, \
-						 usecols = (19), dtype = 'str', delimiter = '|')
+		restwaves, cols, sigcols, bvals, sigbvals, vels, sigvels, zcomps = \
+		    np.loadtxt(veeper_fn, unpack=True, skiprows = 1, usecols = (1,3,4,5,6,7,8, 18), delimiter = '|')
+		veeper_ions, labels = np.loadtxt(veeper_fn, unpack=True, skiprows = 1, \
+						 usecols = (19, 21), dtype = 'str', delimiter = '|')
+		
+		if type(veeper_ions) == np.str_:
+			veeper_ions = np.array([veeper_ions]); restwaves =  np.array([restwaves]); 
+			cols =  np.array([cols]); sigcols =  np.array([sigcols]); 
+			bvals =  np.array([bvals]); sigbvals =  np.array([sigbvals]);
+			vels =  np.array([vels]); sigvels =  np.array([sigvels]); 
+			labels =  np.array([labels]); zcomps = np.array([zcomps]);
+
 		for i in range(len(veeper_ions)):
 			temp    = veeper_ions[i]
 			veeper_ions[i] = temp.replace(" ", "")
@@ -302,7 +308,9 @@ def load_veeper_fit(veeper_fn):
 			sigbvals = sigbvals[mask]
 			vels = vels[mask]
 			sigvels = sigvels[mask]
+			labels = labels[mask]
+			zcomps = zcomps[mask]
 	else:
                 restwaves = []; cols = []; sigcols = []; bvals = []; sigbvals = [];
-                vels      = []; sigvels = []; flags = []; veeper_ions = [];
-	return veeper_ions, restwaves, cols, sigcols, bvals, sigbvals, vels, sigvels
+                vels      = []; sigvels = []; flags = []; veeper_ions = []; labels = []; zcomps = [];
+	return veeper_ions, restwaves, cols, sigcols, bvals, sigbvals, vels, sigvels, labels, zcomps

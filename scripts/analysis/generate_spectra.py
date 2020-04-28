@@ -8,17 +8,20 @@ import trident
 import numpy as np
 import os.path
 
-import spec_tools as sp
+import spectrum_generating_tools as spg
 
 def make_random_spectrum(model, output, num_spectra = 1, spectrum_directory = '.', \
                          ion_list = 'all', rmin = 10, rmax = 100, ray_len = 500, redshift = None):
 
-    
-    ds, gcenter, bulk_velocity = sp.load_simulation_properties(model, output)
+
+    # load data set with yt, galaxy center, and the bulk velocity of the halo
+    ds, gcenter, bulk_velocity = spg.load_simulation_properties(model, output)
     ad = ds.all_data()
+    # set field parameters so that trident knows to subtract off bulk velocity
     ad.set_field_parameter('bulk_velocity', bulk_velocity)
     ad.set_field_parameter('center', gcenter)
 
+    # either specify redshift manually, or determine redshift from the redshift of the simulation
     if redshift is None:
         redshift = round(ds.current_redshift, 2)
     print(gcenter, gcenter[0], bulk_velocity)
@@ -29,15 +32,19 @@ def make_random_spectrum(model, output, num_spectra = 1, spectrum_directory = '.
     ikpc_unit = 1.0 / kpc_unit
     
     for i in range(num_spectra):
-        impact_parameter, ray_start, ray_end = sp.generate_random_ray_coordinates(gcenter*kpc_unit, rmin*kpc_unit, rmax*kpc_unit, ray_len*kpc_unit)
-        ray_id, ray_fn = sp.get_next_ray_id(model, redshift, spectrum_directory = spectrum_directory)
+        # generate the coordinates of the random sightline
+        impact_parameter, ray_start, ray_end = spg.generate_random_ray_coordinates(gcenter*kpc_unit, rmin*kpc_unit, rmax*kpc_unit, ray_len*kpc_unit)
+        ray_id, ray_fn = spg.get_next_ray_id(model, redshift, spectrum_directory = spectrum_directory)
+        # write ray id, impact parameter, bulk velocity, and start/end coordinates out to file
         ray_outfile = open(ray_fn, 'a')
         ray_outfile.write('%i %.2f %.2f %.2f %.2f %e %e %e %e %e %e %e %e %e\n'%(ray_id, impact_parameter*ikpc_unit, \
                 bulk_velocity[0].in_units('km/s').d, bulk_velocity[1].in_units('km/s').d, bulk_velocity[2].in_units('km/s').d,\
-                      ray_start[0]*ikpc_unit, ray_start[1]*ikpc_unit, ray_start[2]*ikpc_unit, \
-                                                                                 ray_end[0]*ikpc_unit,   ray_end[1]*ikpc_unit,   ray_end[2]*ikpc_unit, gcenter[0].astype(float), gcenter[1].astype(float), gcenter[2].astype(float)))
+                ray_start[0]*ikpc_unit, ray_start[1]*ikpc_unit, ray_start[2]*ikpc_unit, \
+                ray_end[0]*ikpc_unit,   ray_end[1]*ikpc_unit,   ray_end[2]*ikpc_unit,\
+                gcenter[0].astype(float), gcenter[1].astype(float), gcenter[2].astype(float)))
         ray_outfile.close()
-
+        
+        # generate sightline using Trident
         ray = trident.make_simple_ray(ds,
                             start_position = ray_start,
                             end_position = ray_end,
@@ -47,7 +54,9 @@ def make_random_spectrum(model, output, num_spectra = 1, spectrum_directory = '.
                             # the current redshift of the simulation, calculated above, rounded to two decimal places
                             redshift=redshift,
                             data_filename='%s/ray_%s_%s_%i.h5'%(spectrum_directory, model, output, ray_id))
-         
+
+        # create spectrum from sightline for both G130M and G160M instruments,
+        # for now, save these two spectra as temporary separate files
         for instrument in ['COS-G130M', 'COS-G160M']:
             sg = trident.SpectrumGenerator(instrument, line_database = 'pyigm_line_list.txt')
             sg.make_spectrum(ray, lines = ion_list)
@@ -59,7 +68,7 @@ def make_random_spectrum(model, output, num_spectra = 1, spectrum_directory = '.
 
         # stitch the spectra together in the format you'll need for veeper
         spec_name = '%s/COS-FUV_%s_z%.2f_%i.fits'%(spectrum_directory, model, redshift, int(ray_id))
-        sp.stitch_g130m_g160m_spectra('COS-G130M.fits', 'COS-G160M.fits', spec_name)
+        spg.stitch_g130m_g160m_spectra('COS-G130M.fits', 'COS-G160M.fits', spec_name)
         os.remove('COS-G130M.fits')
         os.remove('COS-G160M.fits')
             

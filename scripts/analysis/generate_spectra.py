@@ -78,7 +78,7 @@ output = 3195
 model = sys.argv[1]
 output = int(sys.argv[2])
 num_spectra = int(sys.argv[3])
-for i in range(15):
-    make_random_spectrum(model, output, rmax = 70, num_spectra = num_spectra, ion_list = ion_list, spectrum_directory = sd)
+for i in range(num_spectra):
+    make_random_spectrum(model, output, rmin = 70, rmax = 300, num_spectra = num_spectra, ion_list = ion_list, spectrum_directory = sd)
 
 

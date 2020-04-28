@@ -153,10 +153,16 @@ def load_simulation_properties(model, output):
         ds = yt.load(fn)
 
         # calculate center of mass and bulk velocity using pynbody
-        pynbody_file = '/nobackupp2/nnsanche/pioneer50h243.1536g1bwK1BH/pioneer50h243.1536gst1bwK1BH.%06d'%(output)
+#        pynbody_file = '/nobackupp2/nnsanche/pioneer50h243.1536g1bwK1BH/pioneer50h243.1536gst1bwK1BH.%06d'%(output)
+        # note the file above is missing now
+        pynbody_file = fn
         s = pynbody.load(pynbody_file)
         s.physical_units()
-        gcenter = YTArray(pynbody.analysis.halo.center_of_mass(s.s), 'kpc')
+        # gcenter was calculated from s.s before
+        gcenter = YTArray(pynbody.analysis.halo.center_of_mass(s.g), 'kpc')
+        print(gcenter)
+        gcenter = YTArray([-1.693207e+04, -1.201068e4, 5.303337e3], 'kpc')
+        print(gcenter)
         bulk_velocity = YTArray(pynbody.analysis.halo.center_of_mass_velocity(s.g), 'km/s')
     
     return ds, gcenter, bulk_velocity

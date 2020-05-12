@@ -144,7 +144,7 @@ def eqwrange(ion, wave, spec, error, vrange, w0, f0, \
   	#now convert data points to tau0 -> column density using input line data
 	tau = -1. * np.log(spec)
 	f_tau = np.cumsum(tau[iv]) / max(np.cumsum(tau[iv])) # cumulative opticaldepth fraction
-	tau_cent = np.interp(0.5, f_tau, vv[iv])
+	tau_cent = np.interp(0.5, f_tau, vv[iv])        
  
 	# calculate velocity width as moment of tau dist
 	top = np.sum((vv[iv] - tau_cent)**2 * tau[iv] * deriv(vv[iv])) # integral of (v-vbar)^2 * tau_a(v) * dv
@@ -191,7 +191,7 @@ def eqwrange(ion, wave, spec, error, vrange, w0, f0, \
 	return eqw, eqwerr, np.log10(np.abs(col)), np.log10(col+colerr)-np.log10(col), flag, velcent, velwidth
 
 
-def find_ion_limits(ion, fn, restwave = 0, redshift = 0, \
+def find_ion_limits(ion, fn, restwave = 0, redshift = 0, sig_limit = 3, \
 			    vrange = (-200, 200), silent = 0, plots = 0, plot_dir = '.', sat_limit = 0.1):
     ion_names = np.loadtxt('../../dla.lst', unpack=True, skiprows = 1, usecols=(1), dtype = 'str')
     ion_wls, ion_fs = np.loadtxt('../../dla.lst', unpack=True, skiprows = 1,usecols=(0, 3))
@@ -219,7 +219,8 @@ def find_ion_limits(ion, fn, restwave = 0, redshift = 0, \
     f0 = ion_fs[ion_mask][wl_mask][0]
 
     eqw, eqwerr, col, colerr, flag, velcent, velwidth = eqwrange(ion, wl, flux, ferr, vrange, w_obs, f0, silent=silent, \
-									   plots = plots, plot_dir = plot_dir)
+									sat_limit = sat_limit, sig_limit = sig_limit,
+                                                                 plots = plots, plot_dir = plot_dir)
     eqw_list.append(eqw)
     eqwerr_list.append(eqwerr)
     col_list.append(col)

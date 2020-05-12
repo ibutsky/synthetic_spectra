@@ -37,7 +37,7 @@ dummy = -9999.
 
 
 spec_files = glob.glob('COS-FUV_*')
-#spec_files = glob.glob('COS-FUV_P0_z0.25_72*')
+spec_files = glob.glob('COS-FUV_P0_z0.25_28*')
 
 for spec in spec_files:
     print(spec)
@@ -56,9 +56,9 @@ for spec in spec_files:
     veeper_ions, veeper_restwaves, veeper_cols, veeper_colerr, veeper_bvals, \
         veeper_bvalerr, veeper_vels, veeper_velerr, veeper_label, veeper_z =  eqw.load_veeper_fit(veeper_fn)
     json_ions, json_restwaves, json_cols, json_colerr, json_flag, json_z = \
-        eqw.json_eqw(json_fn, aodm_fn, json_out, overwrite = True)
+        eqw.json_eqw(json_fn, aodm_fn, json_out, overwrite = False)
 
-    print(json_ions, json_flag)
+#    print(json_ions, json_flag, json_z)
     
     for ion in master_ion_list:
         rw = spa.restwave(ion, redshift) 
@@ -80,15 +80,27 @@ for spec in spec_files:
                     colerr = veeper_colerr[mask][i]
                     flag = 1
                 elif 2 in json_flag[json_mask]:
-                    json_mask = (json_ions == ion) & (json_z == z_closest) & (json_flag == 2)
-                    col = max(json_cols[json_mask])
+                    temp_mask = (json_ions == ion) & (json_z == z_closest) & (json_flag == 2)
+                    col = max(json_cols[temp_mask])
                     colerr = 0
                     flag = 2
                 elif 3 in json_flag[json_mask]:
-                    json_mask = (json_ions == ion) & (json_z == z_closest) &(json_flag == 3)
-                    col = min(json_cols[json_mask])
+                    temp_mask = (json_ions == ion) & (json_z == z_closest) &(json_flag == 3)
+                    col = min(json_cols[temp_mask])
                     colerr = 0
                     flag = 3
+                    eqws, sigeqw, lncol, siglncol, flag_aodm, velcent, velwidth = \
+                        eqw.find_ion_limits(ion, aodm_fn, redshift = redshift, \
+                                            silent = 1, plots = 0, plot_dir = aodm_plot_dir,
+                                            vrange = (-200, 200), sig_limit = 0, sat_limit = 0.1)
+                    
+                    if (veeper_label[mask][i]) == 'nolow':
+                        print('JSON Flag = 3 for %s, col = %f, %s'%(ion, col, spec))
+                        print(flag_aodm, eqws, sigeqw)
+                        print(json_ions, json_flag, json_z)
+
+                        print(json_flag[json_mask])
+                    
 
                 total_col += np.power(10, col)
                 total_sqerr += np.power(10, colerr)**2

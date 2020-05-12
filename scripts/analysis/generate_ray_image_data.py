@@ -23,7 +23,7 @@ def generate_ray_image_data(field_list, weight_list,
     if model == 'P0':
         ds = yt.load('~/Work/galaxy/P0/P0.003195')
         ds.add_field(('gas', 'mass'), function = _mass2, units = 'g', sampling_type = 'particle')
-        
+
     trident.add_ion_fields(ds, ions = ion_list)
     # for annoying reasons... need to convert ray positions to "code units"
     code_unit_conversion = ds.domain_right_edge.d / ds.domain_right_edge.in_units('kpc').d
@@ -49,7 +49,7 @@ def generate_ray_image_data(field_list, weight_list,
         ray_start_list = np.vstack((ray_start_list, [xi[i], yi[i], zi[i]] * code_unit_conversion))
         ray_end_list   = np.vstack((ray_end_list,   [xf[i], yf[i], zf[i]] * code_unit_conversion))
 
-    for i in [1]:
+    for i in [0, 10]:
         # generate the coordinates of the random sightline
         # write ray id, impact parameter, bulk velocity, and start/end coordinates out to file
         h5file = h5.File('%s/ray_image_data_%s_%i_%i.h5'%(data_loc, model, output, ray_id_list[i]), 'a')
@@ -80,10 +80,12 @@ def generate_ray_image_data(field_list, weight_list,
 
    
 # here's how to actually call this:
-ion_list = ['H I', 'O VI']#, 'C II', 'C III', 'C IV', 'Si II', 'Si III', 'Si IV', 'N V']
+ion_list = ['H I', 'O VI', 'Si III']#, 'C II', 'C III', 'C IV', 'Si II', 'Si III', 'Si IV', 'N V']
 field_list = ['density', 'temperature', 'metallicity', 'velocity_magnitude',
-              'O_p5_number_density', 'H_p0_number_density']
-weight_list = ['density', 'density', 'density', 'density', None, None]
+              'velocity_x', 'velocity_y', 'velocity_z', 
+              'O_p5_number_density', 'Si_p2_number_density', 'H_p0_number_density']
+weight_list = ['density', 'density', 'density', 'density',
+               'density', 'density', 'density', None, None, None]
 
 data_loc = '../../data/ray_files'
 ray_data_file = '../../data/P0_z0.25_ray_data.dat'

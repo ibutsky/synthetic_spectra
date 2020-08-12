@@ -11,7 +11,6 @@ import eqwrange as eqw
 import spectrum_analysis_tools as spa
 
 def find_closest_z(z_comp, json_z_list):
-    closest_z = -1
     smallest_diff = 1.
     for z in json_z_list:
         diff = abs(z_comp - z)
@@ -36,9 +35,7 @@ os.chdir(work_dir)
 dummy = -9999.
 
 
-spec_files = glob.glob('COS-FUV_*')
-#spec_files = glob.glob('COS-FUV_P0_z0.25_28*')
-
+spec_files = glob.glob('COS-FUV_P0_z0.25*')
 for spec in spec_files:
     print(spec)
     if not os.path.isdir(spec) or not spa.spec_ready_for_analysis(spec):
@@ -46,7 +43,7 @@ for spec in spec_files:
         continue
 
     model, redshift, impact, ray_id = spa.extract_spec_info(spec)
-    
+
     veeper_fn = '%s/cleanVPoutput.dat'%(spec)
     json_fn = '%s/%s_lineids.json'%(spec, spec)
     json_out = '%s/json_eqw.dat'%(spec)
@@ -58,7 +55,6 @@ for spec in spec_files:
     json_ions, json_restwaves, json_cols, json_colerr, json_flag, json_z = \
         eqw.json_eqw(json_fn, aodm_fn, json_out, overwrite = False)
 
-#    print(json_ions, json_flag, json_z)
     
     for ion in master_ion_list:
         rw = spa.restwave(ion, redshift) 
@@ -71,41 +67,27 @@ for spec in spec_files:
             total_sqerr = 0
             for i in range(len(veeper_ions[mask])):
                 z_closest = find_closest_z(veeper_z[mask][i], json_z[json_ions == ion])
-                if z_closest == -1:
-                    print("WARNING: NO Z_CLOSEST: ", spec, json_z[json_ions == ion])
                 json_mask = (json_ions == ion) & (json_z == z_closest)
                 ncomp += 1
-                if 1 in json_flag[json_mask] or 3 in json_flag[json_mask]:
+                if 1 in json_flag[json_mask]:
                     col = veeper_cols[mask][i]
                     colerr = veeper_colerr[mask][i]
                     flag = 1
                 elif 2 in json_flag[json_mask]:
-                    temp_mask = (json_ions == ion) & (json_z == z_closest) & (json_flag == 2)
-                    col = max(json_cols[temp_mask])
+                    json_mask = (json_ions == ion) & (json_z == z_closest) & (json_flag == 2)
+                    col = max(json_cols[json_mask])
                     colerr = 0
                     flag = 2
-#                elif 3 in json_flag[json_mask]:
-#                    temp_mask = (json_ions == ion) & (json_z == z_closest) &(json_flag == 3)
-#                    col = min(json_cols[temp_mask])
-#                    colerr = 0
-#                    flag = 3
-#                    eqws, sigeqw, lncol, siglncol, flag_aodm, velcent, velwidth = \
-#                        eqw.find_ion_limits(ion, aodm_fn, redshift = redshift, \
-#                                            silent = 1, plots = 0, plot_dir = aodm_plot_dir,
-#                                            vrange = (-200, 200), sig_limit = 0, sat_limit = 0.1)
-                    
-#                    if (veeper_label[mask][i]) == 'nolow':
-#                        print('JSON Flag = 3 for %s, col = %f, %s'%(ion, col, spec))
-#                        print(flag_aodm, eqws, sigeqw)
-#                        print(json_ions, json_flag, json_z)#
-
-#                        print(json_flag[json_mask])
-                    
+                elif 3 in json_flag[json_mask]:
+                    json_mask = (json_ions == ion) & (json_z == z_closest) &(json_flag == 3)
+                    col = min(json_cols[json_mask])
+                    colerr = 0
+                    flag = 3
 
                 total_col += np.power(10, col)
                 total_sqerr += np.power(10, colerr)**2
  
-                restwave_list = np.append(restwave_list,  veeper_restwaves[mask][i])
+                restwave_list = np.append(restwave_list,  veeper_restwaves[mask])
                 ion_list      = np.append(ion_list,       ion)
                 col_list      = np.append(col_list,       col) 
                 sigcol_list   = np.append(sigcol_list, colerr)
@@ -147,7 +129,6 @@ for spec in spec_files:
             ray_id_list      = np.append(ray_id_list,   ray_id)
             redshift_list    = np.append(redshift_list,  redshift)
 
- 
 dataset_names = ['impact', 'ray_id', 'redshift', 'restwave', 'col', 'col_err', 'bval', \
                   'bval_err', 'vel', 'vel_err', 'flag', 'total_col', 'total_col_err']
 datasets = [impact_list, ray_id_list, redshift_list, restwave_list, col_list, sigcol_list,\
@@ -155,7 +136,7 @@ datasets = [impact_list, ray_id_list, redshift_list, restwave_list, col_list, si
 
 # first save the numerical data   
 for dset, data in zip(dataset_names, datasets):
-    print(dset, len(data))
+    print(dset)
     spec_outfile.create_dataset(dset, data = data)
 
 
@@ -164,7 +145,7 @@ dt = h5.special_dtype(vlen=str)
 dataset_names = ['model', 'ion', 'label']
 datasets = [model_list, ion_list, label_list]
 for dset, data in zip(dataset_names, datasets):
-    print(dset, len(data))
+    print(dset)
     current_dset = spec_outfile.create_dataset(dset, (len(data),), dtype=dt)
     for i in range(len(data)):
         current_dset[i] = data[i].replace(" ", "")

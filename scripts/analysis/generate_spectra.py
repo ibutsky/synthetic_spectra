@@ -13,15 +13,12 @@ import spectrum_generating_tools as spg
 def make_random_spectrum(model, output, num_spectra = 1, spectrum_directory = '.', \
                          ion_list = 'all', rmin = 10, rmax = 100, ray_len = 500, redshift = None):
 
-
-    # load data set with yt, galaxy center, and the bulk velocity of the halo
+    
     ds, gcenter, bulk_velocity = spg.load_simulation_properties(model, output)
     ad = ds.all_data()
-    # set field parameters so that trident knows to subtract off bulk velocity
     ad.set_field_parameter('bulk_velocity', bulk_velocity)
     ad.set_field_parameter('center', gcenter)
 
-    # either specify redshift manually, or determine redshift from the redshift of the simulation
     if redshift is None:
         redshift = round(ds.current_redshift, 2)
     print(gcenter, gcenter[0], bulk_velocity)
@@ -32,19 +29,15 @@ def make_random_spectrum(model, output, num_spectra = 1, spectrum_directory = '.
     ikpc_unit = 1.0 / kpc_unit
     
     for i in range(num_spectra):
-        # generate the coordinates of the random sightline
         impact_parameter, ray_start, ray_end = spg.generate_random_ray_coordinates(gcenter*kpc_unit, rmin*kpc_unit, rmax*kpc_unit, ray_len*kpc_unit)
         ray_id, ray_fn = spg.get_next_ray_id(model, redshift, spectrum_directory = spectrum_directory)
-        # write ray id, impact parameter, bulk velocity, and start/end coordinates out to file
         ray_outfile = open(ray_fn, 'a')
         ray_outfile.write('%i %.2f %.2f %.2f %.2f %e %e %e %e %e %e %e %e %e\n'%(ray_id, impact_parameter*ikpc_unit, \
                 bulk_velocity[0].in_units('km/s').d, bulk_velocity[1].in_units('km/s').d, bulk_velocity[2].in_units('km/s').d,\
-                ray_start[0]*ikpc_unit, ray_start[1]*ikpc_unit, ray_start[2]*ikpc_unit, \
-                ray_end[0]*ikpc_unit,   ray_end[1]*ikpc_unit,   ray_end[2]*ikpc_unit,\
-                gcenter[0].astype(float), gcenter[1].astype(float), gcenter[2].astype(float)))
+                      ray_start[0]*ikpc_unit, ray_start[1]*ikpc_unit, ray_start[2]*ikpc_unit, \
+                                                                                 ray_end[0]*ikpc_unit,   ray_end[1]*ikpc_unit,   ray_end[2]*ikpc_unit, gcenter[0].astype(float), gcenter[1].astype(float), gcenter[2].astype(float)))
         ray_outfile.close()
-        
-        # generate sightline using Trident
+
         ray = trident.make_simple_ray(ds,
                             start_position = ray_start,
                             end_position = ray_end,
@@ -54,9 +47,7 @@ def make_random_spectrum(model, output, num_spectra = 1, spectrum_directory = '.
                             # the current redshift of the simulation, calculated above, rounded to two decimal places
                             redshift=redshift,
                             data_filename='%s/ray_%s_%s_%i.h5'%(spectrum_directory, model, output, ray_id))
-
-        # create spectrum from sightline for both G130M and G160M instruments,
-        # for now, save these two spectra as temporary separate files
+         
         for instrument in ['COS-G130M', 'COS-G160M']:
             sg = trident.SpectrumGenerator(instrument, line_database = 'pyigm_line_list.txt')
             sg.make_spectrum(ray, lines = ion_list)
@@ -87,7 +78,7 @@ output = 3195
 model = sys.argv[1]
 output = int(sys.argv[2])
 num_spectra = int(sys.argv[3])
-for i in range(num_spectra):
-    make_random_spectrum(model, output, rmin = 70, rmax = 300, num_spectra = num_spectra, ion_list = ion_list, spectrum_directory = sd)
+for i in range(15):
+    make_random_spectrum(model, output, rmax = 70, num_spectra = num_spectra, ion_list = ion_list, spectrum_directory = sd)
 
 

@@ -3,7 +3,7 @@ import numpy as np
 import glob
 import os
 import sys
-#import pynbody
+import pynbody
 import yt
 from yt import YTArray
 from yt.units import YTQuantity
@@ -136,7 +136,7 @@ def stitch_g130m_g160m_spectra(fn_g130, fn_g160, fn_combined):
     fits_combined.writeto(fn_combined, overwrite = True)
 
 
-def load_simulation_properties(model, output, laptop = False):
+def load_simulation_properties(model, output):
     if model == 'tempest':
         ds = yt.load('/mnt/c/scratch/sciteam/chummels/Tempest10/DD%04d/DD%04d'%(output, output))
         if output == 524:
@@ -149,23 +149,15 @@ def load_simulation_properties(model, output, laptop = False):
             ad = ds.all_data()
             # TODO 
     elif model == 'P0':
+        fn = '/nobackup/ibutsky/tmp/pioneer.%06d'%(output)
+        ds = yt.load(fn)
+
         # calculate center of mass and bulk velocity using pynbody
-        if laptop:
-            fn  = '~/Work/galaxy/P0/P0.003195'
-            ds = yt.load(fn)
-            gcenter = YTArray([-1.693207e+04, -1.201068e+04, 5.303337e+03], 'kpc')
-            bulk_velocity = YTArray([72.78, -248.83, -63.49], 'km/s')
-        else:
-            import pynbody
-            fn = '/nobackup/ibutsky/tmp/pioneer.%06d'%(output)
-            ds = yt.load(fn)
-            pynbody_file = '/nobackupp2/nnsanche/pioneer50h243.1536g1bwK1BH/pioneer50h243.1536gst1bwK1BH.%06d'%(output)
-            s = pynbody.load(pynbody_file)
-            s.physical_units()
-            gcenter = YTArray(pynbody.analysis.halo.center_of_mass(s.s), 'kpc')
-            gcenter = YTArray([-1.693207e+04, -1.201068e4, 5.303337e3], 'kpc')
-            print(gcenter)
-            bulk_velocity = YTArray(pynbody.analysis.halo.center_of_mass_velocity(s.g), 'km/s')
+        pynbody_file = '/nobackupp2/nnsanche/pioneer50h243.1536g1bwK1BH/pioneer50h243.1536gst1bwK1BH.%06d'%(output)
+        s = pynbody.load(pynbody_file)
+        s.physical_units()
+        gcenter = YTArray(pynbody.analysis.halo.center_of_mass(s.s), 'kpc')
+        bulk_velocity = YTArray(pynbody.analysis.halo.center_of_mass_velocity(s.g), 'km/s')
     
     return ds, gcenter, bulk_velocity
             

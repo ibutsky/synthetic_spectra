@@ -12,28 +12,17 @@ import os.path
 sys.path.append('../plotting')
 import ion_plot_definitions as ipd
 
-def _mass2(field, data):
-    return data[('Gas', 'Mass')]
-
-def _smoothing_length2(field, data):
-    return data[('Gas', 'smoothing_length')]
-
 def generate_ray_data(model, output, ray_data_file, data_loc = '.', \
                          ion_list = 'all', redshift = None):
-    
+
     # load data set with yt, galaxy center, and the bulk velocity of the halo
-   # ds = yt.load('/nobackup/ibutsky/tmp/pioneer.%06d'%(output))
     if model == 'P0':
         ds = yt.load('/Users/irynabutsky/simulations/patient0/pioneer.%06d'%output)
     if model == 'P0_agncr':
         ds = yt.load('/Users/irynabutsky/simulations/patient0_agncr/pioneer.%06d'%output)
 
-#    ds.add_field(('gas', 'mass'), function = _mass2, units = 'g', sampling_type = 'particle')
-#        ds.add_field(('gas', 'mass'), function = _mass2, units = 'g', sampling_type = 'particle')
-#    ds.add_field(('gas', 'smoothing_length'), function = _smoothing_length2, units = 'cm', sampling_type = 'particle')
 
     trident.add_ion_fields(ds, ions = ion_list)
-  
     # for annoying reasons... need to convert ray positions to "code units"
     code_unit_conversion = ds.domain_right_edge.d / ds.domain_right_edge.in_units('kpc').d
     
@@ -61,36 +50,35 @@ def generate_ray_data(model, output, ray_data_file, data_loc = '.', \
         redshift = round(ds.current_redshift, 2)
     print(gcenter, gcenter[0], bulk_velocity)
     
-    for i in range(36, 37):
+    for i in [69]:
         # generate the coordinates of the random sightline
         # write ray id, impact parameter, bulk velocity, and start/end coordinates out to file
         h5file = h5.File('%s/ray_%s_%i_%i.h5'%(data_loc, model, output, ray_id_list[i]), 'a')
         # generate sightline using Trident
         ray = trident.make_simple_ray(ds,
-                            start_position = ray_start_list[i],
-                            end_position = ray_end_list[i],
-                            lines=ion_list,
-                            ftype='gas',
-                            field_parameters=ad.field_parameters,
-                            # the current redshift of the simulation, calculated above, rounded to two decimal places
-                            redshift=redshift)
+                            start_position   = ray_start_list[i],
+                            end_position     = ray_end_list[i],
+                            lines            = ion_list,
+                            fields           = ['temperature', 'density', 'metallicity', 'velocity_x', 'velocity_y', 'velocity_z'],
+                            ftype            = 'gas',
+                            field_parameters = ad.field_parameters,
+                            redshift         = redshift)
         ad_ray = ray.all_data()
         # generating the list of all of the 
-        field_list = ['y', 'temperature', 'density', 'metallicity', 'dl']
-        source_list = [ad, ad, ad, ad, ad_ray]
-        unit_list = ['kpc', 'K', 'g/cm**3', 'Zsun', 'cm']
+        field_list = ['x', 'y', 'z', 'velocity_x', 'velocity_y', 'velocity_z', 
+                      'temperature', 'density', 'metallicity', 'dl', 'l', 'velocity_los']
+        unit_list = ['kpc', 'kpc', 'kpc', 'km/s', 'km/s', 'km/s', 
+                     'K', 'g/cm**3', 'Zsun', 'cm', 'kpc', 'km/s']
         yt_ion_list = ipd.generate_ion_field_list(ion_list, 'number_density', full_name = False)
 #        yt_ion_list[0] = 'H_number_density'
         field_list = np.append(field_list, yt_ion_list)
         for j in range(len(yt_ion_list)):
             unit_list.append('cm**-3')
-            source_list.append(ad_ray)
 
-        for field,source,unit in zip(field_list, source_list, unit_list):
+        for field, unit in zip(field_list, unit_list):
             if field not in h5file.keys():
-                h5file.create_dataset(field, data = source[('gas', field)].in_units(unit))
+                h5file.create_dataset(field, data = ad_ray[('gas', field)].in_units(unit))
                 h5file.flush()
-        h5file.create_dataset('y_lr', data = ad_ray['y'].in_units('kpc'))
         h5file.flush()
         h5file.close()
         print("saved sightline data %i\n"%(i))
@@ -102,9 +90,10 @@ def generate_ray_data(model, output, ray_data_file, data_loc = '.', \
 ion_list = ['H I', 'O VI', 'C II', 'C III', 'C IV', 'Si II', 'Si III', 'Si IV', 'N V']
 
 data_loc = '../../data/ray_files'
-ray_data_file = '../../data/P0_z0.25_ray_data.dat'
+#ray_data_file = '../../data/P0_z0.25_ray_data.dat'
 model = 'P0_agncr'
-ray_data_file = '../../data/%s_z0.25_ray_data.dat'%model
+model = 'P0'
+ray_data_file = '../../data/%s_z0.25_ray_data.dat'
 output = 3195
 
 generate_ray_data(model, output, ray_data_file, ion_list = ion_list, data_loc = data_loc)

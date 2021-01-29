@@ -12,14 +12,28 @@ import os.path
 sys.path.append('../plotting')
 import ion_plot_definitions as ipd
 
+def _mass2(field, data):
+    return data[('Gas', 'Mass')]
+
+def _smoothing_length2(field, data):
+    return data[('Gas', 'smoothing_length')]
+
 def generate_ray_data(model, output, ray_data_file, data_loc = '.', \
                          ion_list = 'all', redshift = None):
     
     # load data set with yt, galaxy center, and the bulk velocity of the halo
+   # ds = yt.load('/nobackup/ibutsky/tmp/pioneer.%06d'%(output))
     if model == 'P0':
-        ds = yt.load('/nobackup/ibutsky/tmp/pioneer.%06d'%(output))
+        ds = yt.load('/Users/irynabutsky/simulations/patient0/pioneer.%06d'%output)
+    if model == 'P0_agncr':
+        ds = yt.load('/Users/irynabutsky/simulations/patient0_agncr/pioneer.%06d'%output)
+
+#    ds.add_field(('gas', 'mass'), function = _mass2, units = 'g', sampling_type = 'particle')
+#        ds.add_field(('gas', 'mass'), function = _mass2, units = 'g', sampling_type = 'particle')
+#    ds.add_field(('gas', 'smoothing_length'), function = _smoothing_length2, units = 'cm', sampling_type = 'particle')
 
     trident.add_ion_fields(ds, ions = ion_list)
+  
     # for annoying reasons... need to convert ray positions to "code units"
     code_unit_conversion = ds.domain_right_edge.d / ds.domain_right_edge.in_units('kpc').d
     
@@ -47,7 +61,7 @@ def generate_ray_data(model, output, ray_data_file, data_loc = '.', \
         redshift = round(ds.current_redshift, 2)
     print(gcenter, gcenter[0], bulk_velocity)
     
-    for i in range(1, 150):
+    for i in range(36, 37):
         # generate the coordinates of the random sightline
         # write ray id, impact parameter, bulk velocity, and start/end coordinates out to file
         h5file = h5.File('%s/ray_%s_%i_%i.h5'%(data_loc, model, output, ray_id_list[i]), 'a')
@@ -66,7 +80,7 @@ def generate_ray_data(model, output, ray_data_file, data_loc = '.', \
         source_list = [ad, ad, ad, ad, ad_ray]
         unit_list = ['kpc', 'K', 'g/cm**3', 'Zsun', 'cm']
         yt_ion_list = ipd.generate_ion_field_list(ion_list, 'number_density', full_name = False)
-        yt_ion_list[0] = 'H_number_density'
+#        yt_ion_list[0] = 'H_number_density'
         field_list = np.append(field_list, yt_ion_list)
         for j in range(len(yt_ion_list)):
             unit_list.append('cm**-3')
@@ -89,7 +103,8 @@ ion_list = ['H I', 'O VI', 'C II', 'C III', 'C IV', 'Si II', 'Si III', 'Si IV', 
 
 data_loc = '../../data/ray_files'
 ray_data_file = '../../data/P0_z0.25_ray_data.dat'
-model = 'P0'
+model = 'P0_agncr'
+ray_data_file = '../../data/%s_z0.25_ray_data.dat'%model
 output = 3195
 
 generate_ray_data(model, output, ray_data_file, ion_list = ion_list, data_loc = data_loc)

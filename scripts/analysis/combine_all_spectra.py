@@ -23,7 +23,9 @@ def find_closest_z(z_comp, json_z_list):
 master_ion_list = ['HI', 'OVI', 'CII', 'CIII', 'SiII', 'SiIII', 'SiIV', 'NV']
 
 work_dir = '../../data/analyzed_spectra'
+#workdir = '~/Downloads/analyzed_spectra'
 spec_outfile = h5.File('%s/combined_spectra.h5'%(work_dir), 'w')
+#spec_outfile = h5.File('temp.h5', 'w')
 
 model_list   = [];   redshift_list = [];   impact_list = [];     label_list = [];
 col_list     = [];     sigcol_list = [];     bval_list = [];   sigbval_list = [];

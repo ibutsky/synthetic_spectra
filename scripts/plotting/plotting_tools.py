@@ -34,17 +34,21 @@ def load_data(property_list, fn = None, ovi_label = None,
     return np.array(return_array)
 
 
-def plot_details(xfield, yfield):
+def plot_details(xfield, yfield, log=True):
     if xfield == 'impact':
         xlims  = (0.1, 89)
         xlabel = 'Impact Parameter (kpc)'
+
     elif xfield == 'bval':
         xlims  = (0.1, 79)
         xlabel = 'Doppler Parameter'
-
+        if log:
+            xlims = np.log10(xlims)
     if yfield == 'col' or yfield == 'total_col':
         ylims = (1e12, 1e16)
         ylabel = 'Ion Column Density (cm$^{-2}$)'
+        if log:
+            ylims = (12, 16)
     elif yfield == 'vel':
         ylims  = (-225, 225)
         ylabel = 'Velocity Offset (km / s)'
@@ -74,9 +78,9 @@ def plot_data_scatter(ion, xfield = 'impact', yfield = 'col', model = None, ovi_
     xscatter, xerr, yscatter, yerr, flagscatter = load_data(field_list, ion = ion, fn = fn, \
                                       model = model, redshift=redshift, ovi_label = ovi_label)
     
-    
-    
-    mask = (xscatter > -9999.) & (yscatter > -9999)
+    #print(xscatter[1])
+    xscatter = np.log10(xscatter)
+    mask = (xscatter > -9999.) & (yscatter > -9999) & (yerr < 0.5)   #TEMPORARY yerr flag
     xscatter = xscatter[mask]
     xerr     = xerr[mask]
     yscatter = yscatter[mask]
@@ -96,22 +100,23 @@ def plot_data_scatter(ion, xfield = 'impact', yfield = 'col', model = None, ovi_
 
     
     if yfield == 'col' or yfield == 'total_col':
-        yscatter = 10**yscatter
-        yerr = 10**yerr
-        ax.set_yscale('log')
+#        yscatter = 10**yscatter
+#        yerr = 10**yerr
+#        ax.set_yscale('log')
         
         sat = flagscatter == 2
         ax.scatter(xscatter[sat], yscatter[sat],  marker = "^", edgecolor = 'black', facecolor = color, s = marker_size)
         nondetect = flagscatter == 3
         ax.scatter(xscatter[nondetect], yscatter[nondetect],  marker = "v", edgecolor = 'black', facecolor = color, s = marker_size)
         detect = flagscatter == 1
+        ax.errorbar(xscatter[detect], yscatter[detect], yerr = yerr[detect], color = 'black', linestyle = '', zorder = 0, alpha = 0.2)
         ax.scatter(xscatter[detect], yscatter[detect],  marker = marker_style, edgecolor = 'black', facecolor = color, label = label, s = marker_size)
-        ax.errorbar(xscatter[detect], yscatter[detect], yerr = yerr[detect], color = 'black', linestyle = '')
+
 
         
     else:
         ax.scatter(xscatter, yscatter, edgecolor = color, label = label, facecolor = 'white', s = marker_size)
-    ax.errorbar(xscatter, yscatter, yerr = yerr, color = color, facecolor = None, linestyle = '')
+        ax.errorbar(xscatter, yscatter, yerr = yerr, color = color, facecolor = None, linestyle = '')
     if annotate_ion:
         annotate_ion_name(ax, ion)
 
@@ -159,11 +164,11 @@ def plot_multipanel_scatter(ion_list, xfield = 'impact', yfield = 'col', nrows =
 #        ax = [ax, ax]
 
     if compare == 'model':
-        models = ['P0', 'tempest']
+        models = ['P0', 'P0_agncr']
         ovi_labels = [None, None]
         colors = ['amber', 'windows blue']
         colors = sns.xkcd_palette(colors)
-        labels = ['Patient 0', 'Tempest']
+        labels = ['Patient 0', 'P0+agncr']
         marker_styles = ['s', 'o']
 
     elif compare == 'ovi':

@@ -15,15 +15,21 @@ import ion_plot_definitions as ipd
 def _mass2(field, data):
     return data[('Gas', 'Mass')]
 
+def _smoothing_length2(field, data):
+    return data[('Gas', 'smoothing_length')]
+
 def generate_ray_image_data(field_list, weight_list,
                             model = 'P0', output = 3195, ray_data_file = '../../data/P0_z0.25_ray_data.dat',
                             data_loc = '.', ion_list = 'all', redshift = None):
 
     # load data set with yt, galaxy center, and the bulk velocity of the halo
     if model == 'P0':
-        ds = yt.load('~/Work/galaxy/P0/P0.003195')
-        ds.add_field(('gas', 'mass'), function = _mass2, units = 'g', sampling_type = 'particle')
-
+        ds = yt.load('~/simulations/patient0/pioneer.003195')
+    elif model == 'P0_agncr':
+        ds = yt.load('~/simulations/patient0_agncr/pioneer.003195')
+    ds.add_field(('gas', 'mass'), function = _mass2, units = 'g', sampling_type = 'particle')
+   # ds.add_field(('gas', 'smoothing_length'), function = _smoothing_length2, units = 'cm', sampling_type = 'particle')
+    ds.add_field(('smoothing_length'), function = _smoothing_length2, units = 'cm', sampling_type = 'particle')
     trident.add_ion_fields(ds, ions = ion_list)
     # for annoying reasons... need to convert ray positions to "code units"
     code_unit_conversion = ds.domain_right_edge.d / ds.domain_right_edge.in_units('kpc').d
@@ -33,6 +39,7 @@ def generate_ray_image_data(field_list, weight_list,
 
     gcenter_kpc = [cx[0], cy[0], cz[0]]  # assuming galaxy center is the same for all sightlines
     gcenter = gcenter_kpc * code_unit_conversion
+    print(gcenter)
     bulk_velocity = YTArray([bvx[0], bvy[0], bvz[0]], 'km/s')
     # set field parameters so that trident knows to subtract off bulk velocity
     ad = ds.all_data()
@@ -49,13 +56,15 @@ def generate_ray_image_data(field_list, weight_list,
         ray_start_list = np.vstack((ray_start_list, [xi[i], yi[i], zi[i]] * code_unit_conversion))
         ray_end_list   = np.vstack((ray_end_list,   [xf[i], yf[i], zf[i]] * code_unit_conversion))
 
-    for i in [0, 10]:
+    for i in [69]:
         # generate the coordinates of the random sightline
         # write ray id, impact parameter, bulk velocity, and start/end coordinates out to file
         h5file = h5.File('%s/ray_image_data_%s_%i_%i.h5'%(data_loc, model, output, ray_id_list[i]), 'a')
 
         ray_center = ray_start_list[i] + 0.5*(ray_end_list[i] - ray_start_list[i])
         ray_direction = ray_end_list[i] - ray_start_list[i]
+        ray_center = ds.arr(ray_center, 'unitary')
+        
         print(ray_center, ray_direction, width)
 #        ray_center = [-0.42299158, -0.30013312,  0.13297239]
 #        ray_direction =  [0.6779612,  -0.68934122, -0.25529845]
@@ -67,8 +76,7 @@ def generate_ray_image_data(field_list, weight_list,
             if weight is not None:
                 weight = ('gas', weight)
             if field not in h5file.keys():
-                image = yt.off_axis_projection(ds, ray_center, ray_direction, width, 
-                                               [1200, 80], ('gas', field), weight = weight)
+                image = yt.off_axis_projection(ds, ray_center, ray_direction, width, [1200, 80], ('gas', field), weight = weight)
                 
                 h5file.create_dataset(field, data = image)
                 h5file.flush()
@@ -81,17 +89,19 @@ def generate_ray_image_data(field_list, weight_list,
    
 # here's how to actually call this:
 ion_list = ['H I', 'O VI', 'Si III']#, 'C II', 'C III', 'C IV', 'Si II', 'Si III', 'Si IV', 'N V']
+#ion_list = []
 field_list = ['density', 'temperature', 'metallicity', 'velocity_magnitude',
-              'velocity_x', 'velocity_y', 'velocity_z', 
+              'velocity_x', 'velocity_y', 'velocity_z',
               'O_p5_number_density', 'Si_p2_number_density', 'H_p0_number_density']
 weight_list = ['density', 'density', 'density', 'density',
                'density', 'density', 'density', None, None, None]
 
 data_loc = '../../data/ray_files'
-ray_data_file = '../../data/P0_z0.25_ray_data.dat'
-model = 'P0'
 output = 3195
 
-generate_ray_image_data(field_list, weight_list, ion_list = ion_list, data_loc = data_loc)
+model = 'P0'
+ray_data_file = '../../data/%s_z0.25_ray_data.dat'%model
+
+generate_ray_image_data(field_list, weight_list, model = model, ion_list = ion_list, data_loc = data_loc)
 
 

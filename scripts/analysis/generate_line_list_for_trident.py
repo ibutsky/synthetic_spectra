@@ -26,6 +26,6 @@ def generate_line_list_file(ions = []):
     out.close()
 
 ions = ['H I', 'O VI', 'C II', 'C III', 'C IV', \
-                'Si II', 'Si III', 'Si IV', 'N V']
+                'Si II', 'Si III', 'Si IV', 'N V', 'Mg II']
 generate_line_list_file(ions = ions)
 

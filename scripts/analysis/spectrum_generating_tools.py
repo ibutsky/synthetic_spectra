@@ -3,7 +3,7 @@ import numpy as np
 import glob
 import os
 import sys
-import pynbody
+#import pynbody
 import yt
 from yt import YTArray
 from yt.units import YTQuantity

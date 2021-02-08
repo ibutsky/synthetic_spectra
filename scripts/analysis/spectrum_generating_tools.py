@@ -24,6 +24,31 @@ def assert_within(value, target, error):
     assert(value < target + error)
     assert(value > target - error)
 
+def _CRPressure(field, data):
+    crgamma = 4./3.
+    crpressure = (crgamma - 1.) * data[('Gas', 'CREnergy')].d * data[('Gas', 'density')].in_units('g/cm**3').d
+    return YTArray(crpressure, 'dyn/cm**2')
+
+def _Pressure(field, data):
+    gamma = 5./3.
+    m_p = YTQuantity(1.6726219e-24, 'g')  # mass of proton in grams                                                                                                                                                                
+    mu = 1.2
+    kb = YTQuantity(1.38e-16, 'erg/K') #boltzmann constant cgs                                                                                                                                                                         
+    u = data[('Gas', 'Temperature')] * kb / (mu*m_p * (gamma-1.))
+    return u * data[('Gas','density')] * (gamma-1.)
+
+
+def _CRBeta(field, data):
+    gamma = 5./3.
+    m_p = 1.6726219e-24  # mass of proton in grams                                                                                                                                                                
+    mu = 1.2
+    kb = 1.38e-16 #boltzmann constant cgs                                                                                                                                                                         
+    u = data[('Gas','Temperature')].d * kb / (mu*m_p * (gamma-1.))
+    pressure = u * data[('Gas', 'density')].in_units('g/cm**3').d * (gamma-1.)
+    #crgamma = 4./3.
+ #   crpressure =  (crgamma - 1.) * data[('Gas', 'CREnergy')].d * data[('Density')].in_units('g/cm**3').d                                                                                                         
+    return data[('gas', 'CRPressure')]/ data[('gas', 'pressure')]
+    
 def generate_random_ray_coordinates(center, rmin, rmax, ray_len):
     # center: the coordinates of the center of the simulation
     # rmin, rmax: the minimum and maximum impact parameter values of the generated ray
@@ -63,59 +88,6 @@ def generate_random_ray_coordinates(center, rmin, rmax, ray_len):
 
     return r, ray_start, ray_end
 
-def get_rockstar_data(rstar_fn, halo_id):
-    """
-    Use ytree to get all of the halo centroids, virial radii, and redshift info; store in a dict
-    """
-    # load up dataset and get appropriate TreeNode
-    import ytree 
-
-    a = ytree.load(rstar_fn)
-    t = a[a["Orig_halo_ID"] == halo_id][0]
-
-    redshift_arr = t['prog', 'redshift']
-    x_arr = t['prog', 'x'].in_units('unitary')
-    y_arr = t['prog', 'y'].in_units('unitary')
-    z_arr = t['prog', 'z'].in_units('unitary')
-    vx_arr = t['prog', 'vx'].in_units('km/s')
-    vy_arr = t['prog', 'vy'].in_units('km/s')
-    vz_arr = t['prog', 'vz'].in_units('km/s')
-    rvir_arr = t['prog', 'Rvir'].convert_to_units('kpc') 
-
-    return {'redshift_arr':redshift_arr, 'x_arr':x_arr, 'y_arr':y_arr, 'z_arr':z_arr, 'vx_arr':vx_arr, 'vy_arr':vy_arr, 'vz_arr':vz_arr, 'rvir_arr':rvir_arr}
-
-def read_rockstar_info(rockstar_data, ds):
-    """
-    Interpolate halo center from rockstar merger tree
-    """
-    redshift = ds.current_redshift
-    redshift_arr = rockstar_data['redshift_arr']
-    x = np.interp(redshift, redshift_arr, rockstar_data['x_arr'].in_units('unitary'))
-    y = np.interp(redshift, redshift_arr, rockstar_data['y_arr'].in_units('unitary'))
-    z = np.interp(redshift, redshift_arr, rockstar_data['z_arr'].in_units('unitary'))
-    vx = np.interp(redshift, redshift_arr, rockstar_data['vx_arr'].in_units('km/s'))
-    vy = np.interp(redshift, redshift_arr, rockstar_data['vy_arr'].in_units('km/s'))
-    vz = np.interp(redshift, redshift_arr, rockstar_data['vz_arr'].in_units('km/s'))
-    rvir = np.interp(redshift, redshift_arr, rockstar_data['rvir_arr'])
-
-    pos_arr = ds.arr([x,y,z], 'unitary')
-    vel_arr = ds.arr([vx,vy,vz], 'km/s')
-    rvir = ds.quan(rvir, 'kpccm').in_units('kpc')
-    return pos_arr, vel_arr, rvir
-    
-if __name__ == '__main__':
-
-    snapshot_fn = sys.argv[1]
-    rockstar_fn = sys.argv[2]
-    halo_id = int(sys.argv[3])
-    rockstar_data = get_rockstar_data(rockstar_fn, halo_id)
-
-    ds = yt.load(snapshot_fn)
-    c, bv, rvir = read_rockstar_info(rockstar_data, ds)
-    print(c)
-    print(bv)
-    print(rvir)
-
 
 def stitch_g130m_g160m_spectra(fn_g130, fn_g160, fn_combined):
     temp130 = fits.open(fn_g130)
@@ -136,28 +108,22 @@ def stitch_g130m_g160m_spectra(fn_g130, fn_g160, fn_combined):
     fits_combined.writeto(fn_combined, overwrite = True)
 
 
-def load_simulation_properties(model, output):
-    if model == 'tempest':
-        ds = yt.load('/mnt/c/scratch/sciteam/chummels/Tempest10/DD%04d/DD%04d'%(output, output))
-        if output == 524:
-            rockstar_fn = '/projects/eot/bafa/tempest/tree_27.dat'
-            halo_id = 27
-            rockstar_data = get_rockstar_data(rockstar_fn, halo_id)
-            gcenter, bulk_velocity, rvir = read_rockstar_info(rockstar_data, ds)
-        else:
-            print('WARNING: No rockstar file for output %i'%(output))
-            ad = ds.all_data()
-            # TODO 
-    elif model == 'P0':
-        fn = '/nobackup/ibutsky/tmp/pioneer.%06d'%(output)
-        ds = yt.load(fn)
-
-        # calculate center of mass and bulk velocity using pynbody
-        pynbody_file = '/nobackupp2/nnsanche/pioneer50h243.1536g1bwK1BH/pioneer50h243.1536gst1bwK1BH.%06d'%(output)
-        s = pynbody.load(pynbody_file)
-        s.physical_units()
-        gcenter = YTArray(pynbody.analysis.halo.center_of_mass(s.s), 'kpc')
-        bulk_velocity = YTArray(pynbody.analysis.halo.center_of_mass_velocity(s.g), 'km/s')
+def load_simulation_properties(model, output=3195):
+    if model == 'P0':
+        ds = yt.load('/Users/irynabutsky/simulations/patient0/pioneer.%06d'%output)
+        gcenter = YTArray([-16933.77317667, -12009.28144633,   5305.25448309], 'kpc') # generated with shrink sphere
+        bulk_velocity =	YTArray([73.05701672, -239.32976334,  -68.07892736], 'km/s')
+        ds.add_field(('gas', 'pressure'), function=_Pressure, sampling_type = 'particle',
+                     units = ds.unit_system["pressure"])  
+    elif model == 'P0_agncr':
+        ds = yt.load('/Users/irynabutsky/simulations/patient0_agncr/pioneer.%06d'%output)
+        gcenter = YTArray([-16933.48544591, -12006.24067239,   5307.33807425], 'kpc') # generated with shrink sphere
+        bulk_velocity = YTArray([74.98331176, -240.71723683,  -67.77556155], 'km/s')        
+        ds.add_field(('gas', 'CRPressure'), function=_CRPressure, sampling_type = 'particle', 
+                     units = ds.unit_system["pressure"])
+        ds.add_field(('gas', 'pressure'), function=_Pressure, sampling_type = 'particle',
+                     units = ds.unit_system["pressure"])
+        ds.add_field(('gas', 'CRBeta'), function = _CRBeta, sampling_type = 'particle', units = '')
     
     return ds, gcenter, bulk_velocity
             

@@ -10,15 +10,9 @@ import spectrum_generating_tools as spg
 def make_random_spectrum(model, output = 3195, spectrum_directory = '../../data/unanalyzed_spectra', \
                          ion_list = 'all', redshift = None):
 
-    if model == 'P0':
-        ds = yt.load('/Users/irynabutsky/simulations/patient0/pioneer.%06d'%output)
-        gcenter = YTArray([-1.693207e4, -1.201068e4, 5.303337e3], 'kpc')
-        bulk_velocity = YTArray([72.78, -248.83, -63.49], 'km/s')
-    if model == 'P0_agncr':
-        ds = yt.load('/Users/irynabutsky/simulations/patient0_agncr/pioneer.%06d'%output)
-        gcenter = YTArray([-1.695524e4, -1.199842e4, 5.309064e3], 'kpc')
-        bulk_velocity = YTArray([74.00, -249.27, -63.50], 'km/s')
-
+    ds, gcenter, bulk_velocity = spg.load_simulation_properties(model)
+    trident.add_ion_fields(ds, ions=ion_list)
+    
     ad = ds.all_data()
     ad.set_field_parameter('bulk_velocity', bulk_velocity)
     ad.set_field_parameter('center', gcenter)
@@ -58,6 +52,7 @@ def make_random_spectrum(model, output = 3195, spectrum_directory = '../../data/
                             end_position = ds.arr(ray_end.d*kpc_unit, 'unitary'),
                             lines=ion_list,
                             ftype='gas',
+                            fields           = ['temperature', 'density', 'metallicity', 'velocity_x', 'velocity_y', 'velocity_z'],
                             field_parameters=ad.field_parameters,
                             # the current redshift of the simulation, calculated above, rounded to two decimal places
                             redshift=redshift,

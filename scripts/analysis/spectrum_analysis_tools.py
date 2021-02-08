@@ -9,17 +9,19 @@ def find_spec_impact_parameter(model, redshift, ray_id,  work_dir = '../../data'
     id_list, impact_list = np.loadtxt(info_file, unpack=True, skiprows=1, usecols=(0,1))
     return impact_list[id_list == ray_id]
 
-def extract_spec_info(spec_name):
+def extract_spec_info(spec_name, work_dir = '../../data'):
     # note: this assumes a specific naming convention      
     for test_indent in range(3):
         ray_id = spec_name[-1 - test_indent : ]
         if not ray_id.__contains__('_'):
             indent = test_indent
 
-    model = spec_name[8  : -8 - indent]
-    redshift = float(spec_name[-6 - indent : -2 - indent])
+    model = spec_name[8  : -9 - indent]
+    print(model)
+    redshift = float(spec_name[-6 - indent : -3 - indent])
     ray_id = int(spec_name[-1 - indent :])
-    impact = find_spec_impact_parameter(model, redshift, ray_id)
+    print(ray_id)
+    impact = find_spec_impact_parameter(model, redshift, ray_id, work_dir = work_dir)
     return model, redshift, impact, ray_id
 
 
@@ -34,10 +36,13 @@ def spec_ready_for_analysis(spec_name):
 def spec_base_filename(model, redshift, ray_id):
     return 'COS-FUV_%s_z%.2f_%i'%(model, redshift, ray_id)
 
-def load_velocity_data(ion, spec, work_dir = '../../data/analyzed_spectra'):
-    model, redshift, impact, ray_id = extract_spec_info(spec)
+def load_velocity_data(ion, spec, work_dir = '../../data/analyzed_spectra', unanalyzed = False):
+    model, redshift, impact, ray_id = extract_spec_info(spec, work_dir = work_dir)
     w0 = restwave(ion, redshift)
-    wl, flux, ferr = load_spec_from_fits('%s/%s/%s_ibnorm.fits'%(work_dir, spec, spec))
+    if unanalyzed:
+        wl, flux, ferr = load_spec_from_fits('%s/%s.fits'%(work_dir, spec), unanalyzed = True)
+    else:
+        wl, flux, ferr = load_spec_from_fits('%s/%s/%s_ibnorm.fits'%(work_dir, spec, spec))
     vv = (wl-w0) / w0 * 2.9979e5
 
     fit = '%s/%s/FitInspection.fits'%(work_dir,spec)
@@ -53,11 +58,17 @@ def load_velocity_data(ion, spec, work_dir = '../../data/analyzed_spectra'):
 
     return vv, flux, vvfit, fluxfit, wl, wlfit, w0
 
-def load_spec_from_fits(fn):
+def load_spec_from_fits(fn, unanalyzed = False):
     spec = fits.open(fn)
-    wl = spec['WAVELENGTH'].data
-    flux = spec['FLUX'].data
-    err = spec['ERROR'].data
+    if unanalyzed:
+        data = np.array(spec[1].data[:])
+        wl   = np.array([element[0] for element in data])
+        flux = np.array([element[1] for element in data])
+        err  = np.array([element[2] for element in data])
+    else:
+        wl = spec['WAVELENGTH'].data
+        flux = spec['FLUX'].data
+        err = spec['ERROR'].data
     spec.close()
     return wl, flux, err
 

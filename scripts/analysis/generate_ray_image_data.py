@@ -11,25 +11,14 @@ import os.path
 
 sys.path.append('../plotting')
 import ion_plot_definitions as ipd
-
-def _mass2(field, data):
-    return data[('Gas', 'Mass')]
-
-def _smoothing_length2(field, data):
-    return data[('Gas', 'smoothing_length')]
+import spectrum_generating_tools as spg
 
 def generate_ray_image_data(field_list, weight_list,
                             model = 'P0', output = 3195, ray_data_file = '../../data/P0_z0.25_ray_data.dat',
                             data_loc = '.', ion_list = 'all', redshift = None):
 
     # load data set with yt, galaxy center, and the bulk velocity of the halo
-    if model == 'P0':
-        ds = yt.load('~/simulations/patient0/pioneer.003195')
-    elif model == 'P0_agncr':
-        ds = yt.load('~/simulations/patient0_agncr/pioneer.003195')
-    ds.add_field(('gas', 'mass'), function = _mass2, units = 'g', sampling_type = 'particle')
-   # ds.add_field(('gas', 'smoothing_length'), function = _smoothing_length2, units = 'cm', sampling_type = 'particle')
-    ds.add_field(('smoothing_length'), function = _smoothing_length2, units = 'cm', sampling_type = 'particle')
+    ds, gcenter, bulk_velocity = ds, gcenter, bv = spg.load_simulation_properties(model)
     trident.add_ion_fields(ds, ions = ion_list)
     # for annoying reasons... need to convert ray positions to "code units"
     code_unit_conversion = ds.domain_right_edge.d / ds.domain_right_edge.in_units('kpc').d
@@ -47,7 +36,7 @@ def generate_ray_image_data(field_list, weight_list,
     ad.set_field_parameter('center', gcenter)
     
 
-    width = np.array([300., 20., 20.]) # kpc                                                                          
+    width = np.array([300., 20., 1.]) # kpc
     width *= code_unit_conversion
     
     ray_start_list = np.ndarray(shape=(0, 3))
@@ -56,7 +45,7 @@ def generate_ray_image_data(field_list, weight_list,
         ray_start_list = np.vstack((ray_start_list, [xi[i], yi[i], zi[i]] * code_unit_conversion))
         ray_end_list   = np.vstack((ray_end_list,   [xf[i], yf[i], zf[i]] * code_unit_conversion))
 
-    for i in [69]:
+    for i in [5]:
         # generate the coordinates of the random sightline
         # write ray id, impact parameter, bulk velocity, and start/end coordinates out to file
         h5file = h5.File('%s/ray_image_data_%s_%i_%i.h5'%(data_loc, model, output, ray_id_list[i]), 'a')
@@ -76,7 +65,9 @@ def generate_ray_image_data(field_list, weight_list,
             if weight is not None:
                 weight = ('gas', weight)
             if field not in h5file.keys():
-                image = yt.off_axis_projection(ds, ray_center, ray_direction, width, [1200, 80], ('gas', field), weight = weight)
+                box = ds.region(ray_center, )
+                image = yt.off_axis_projection(ray, center = ray_center, normal_vector = ray_direction,
+                width = width, resolution = [1200, 80], item = ('gas', field), weight = weight)
                 
                 h5file.create_dataset(field, data = image)
                 h5file.flush()
@@ -100,8 +91,9 @@ data_loc = '../../data/ray_files'
 output = 3195
 
 model = 'P0'
-ray_data_file = '../../data/%s_z0.25_ray_data.dat'%model
+ray_data_file = '../../data/unanalyzed_spectra/%s_z0.25_ray_data.dat'%model
 
-generate_ray_image_data(field_list, weight_list, model = model, ion_list = ion_list, data_loc = data_loc)
+generate_ray_image_data(field_list, weight_list, model = model, ion_list = ion_list,
+                        ray_data_file = ray_data_file, data_loc = data_loc)
 
 

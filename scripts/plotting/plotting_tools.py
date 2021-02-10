@@ -2,6 +2,9 @@ import matplotlib.pylab as plt
 import seaborn as sns
 import h5py as h5
 import numpy as np
+import csv
+from astropy import constants as const
+c = const.c.to('km/s').value
 
 
 
@@ -33,6 +36,77 @@ def load_data(property_list, fn = None, ovi_label = None,
     data.close()
     return np.array(return_array)
 
+def load_csv_data():
+    csvfile = '/Users/irynabutsky/Downloads/merged_solutions.csv'
+    data = csv.reader(open(csvfile, 'rt'))
+
+    ion_list, logN_list, logNerr_list, b_list, berr_list, zcen_list, \
+        zcen_sd_list, ray_id_list, model_list = [], [],[],[],[],[],[],[],[]
+
+    counter = 0
+    for row in data:
+        if counter > 0:
+            ion_list.append(row[0])
+            logN_list.append(float(row[1]))
+            logNerr_list.append(float(row[2]))
+            b_list.append(float(row[3]))
+            berr_list.append(float(row[4]))
+            zcen_list.append(float(row[5]))
+            zcen_sd_list.append(float(row[6]))
+            ray_id_list.append(int(row[7][-4:]))
+            model_list.append(row[7][:-4])
+        counter += 1
+                          
+    ion_list = np.array(ion_list)
+    logN_list = np.array(logN_list)
+    logNerr_list = np.array(logNerr_list)
+    b_list = np.array(b_list)
+    berr_list = np.array(berr_list)
+    zcen_list = np.array(zcen_list)
+    zcen_sd_list = np.array(zcen_sd_list)
+    ray_id_list = np.array(ray_id_list)
+    model_list = np.array(model_list)
+
+    zsys = 0.25
+    vel_list = c * ((1 + zcen_list) / (1 + zsys) - 1)
+
+    # make O VI labels
+    ovi_label_list = np.array(len(vel_list)*[None])
+    for i in range(max(ray_id_list)):
+        for model in ['P0', 'P0agncr']:
+            ovi_mask = (ray_id_list == i) & (model_list == model) & (ion_list == 'OVI')
+            siIII_mask = (ray_id_list == i) & (model_list == model) & (ion_list == 'SiIII')
+            #print(i, model, ion_list[ovi_mask], ion_list[siIII_mask])
+            if len(ion_list[ovi_mask]) == 0:
+                continue
+            if len(ion_list[siIII_mask]) == 0:
+                ovi_label_list[ovi_mask] = 'nolow'
+            else:
+                o_vel_list = vel_list[ovi_mask]
+                si_vel_list = vel_list[siIII_mask]
+                for j, o_vel in enumerate(o_vel_list):
+                    dvel_list = o_vel - si_vel_list
+                    ovi_label_mask = ovi_mask & (vel_list == o_vel)
+                   # print(dvel_list, min(np.abs(dvel_list)))
+                    if min(np.abs(dvel_list)) > 35:
+                      #  print(j, 'nolow', ovi_label_list[ovi_mask])
+                        ovi_label_list[ovi_label_mask] = 'nolow'
+                       # print('theoretical update',  ovi_label_list[ovi_mask])
+                    elif b_list[ovi_label_mask] > 40:
+                        ovi_label_list[ovi_label_mask] = 'broad'
+                    else:
+                        ovi_label_list[ovi_label_mask] = 'narrow'
+            
+    idx, impacts = np.loadtxt('../../data/random_sightlines.dat', unpack = True, skiprows = 1, usecols = (0, 1))
+    impact_list = np.array([])
+    for i, ray_id in enumerate(ray_id_list):
+        mask = idx == ray_id
+        r = impacts[mask][0]
+        impact_list = np.append(impact_list, r)
+        
+    return ion_list, logN_list, logNerr_list, b_list, berr_list, zcen_list, \
+            zcen_sd_list, ray_id_list, model_list, vel_list, impact_list, ovi_label_list
+            
 
 def plot_details(xfield, yfield, log=True):
     if xfield == 'impact':

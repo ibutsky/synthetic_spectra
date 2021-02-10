@@ -6,6 +6,7 @@ import pynbody.plot as pp
 import pynbody.plot.sph as sph
 import matplotlib.pylab as plt
 import numpy as np
+import h5py as h5
 
 pynbody.config['number_of_threads'] = 2
 
@@ -17,9 +18,10 @@ def make_plots():
     cr = int(sys.argv[3])
 
     if cr:
-        s = pynbody.load('../pioneer50h243.1536gst1bwK1BH.%06d'%(output))
+        s = pynbody.load('/nobackup/ibutsky/simulations/patient0_agncr/pioneer50h243.1536gst1bwK1BH.%06d'%(output))
     else:
-        s = pynbody.load('/nobackup/nnsanche/pioneer50h243.1536g1bwK1BH/pioneer50h243.1536gst1bwK1BH.%06d'%(output))
+        s = pynbody.load('/nobackup/ibutsky/simulations/patient0_nocr/pioneer50h243.1536gst1bwK1BH.%06d'%(output))
+#        s = pynbody.load('/nobackup/nnsanche/pioneer50h243.1536g1bwK1BH/pioneer50h243.1536gst1bwK1BH.%06d'%(output))
 
     s.physical_units()
 
@@ -70,17 +72,30 @@ def make_temperature_plots(s, output, cr):
     plt.clf()
 
 def make_sfh(s, output, cr):
-    s_agn = pynbody.load('/nobackup/nnsanche/pioneer50h243.1536g1bwK1BH/pioneer50h243.1536gst1bwK1BH.003456')
-    s_sn = pynbody.load('/nobackup/nnsanche/NO_BHs/pioneer50h243.1536gst1bwK1/pioneer50h243.1536gst1bwK1.003456')
-    s_cr = pynbody.load('/nobackup/ibutsky/patient0_new/pioneer50h243.1536gst1bwK1BH.002432')
-    s_agncr = pynbody.load('/nobackup/ibutsky/patient0_agncr/pioneer50h243.1536gst1bwK1BH.%06d'%(output))
-    plt.xlim(0, 8)
-    pp.sfh(s_sn, label = 'Thermal SNe only')
-    pp.sfh(s_cr, label = 'CR SNe feedback')
-    pp.sfh(s_agn, label = 'Thermal AGN')
-    pp.sfh(s_agncr, label = 'AGN + CR')
+    #s_agn = pynbody.load('/nobackup/nnsanche/pioneer50h243.1536g1bwK1BH/pioneer50h243.1536gst1bwK1BH.003456')
+    s_agn = pynbody.load('/nobackup/ibutsky/simulations/patient0_nocr/pioneer50h243.1536gst1bwK1BH.%06d'%(output))
+#    s_sn = pynbody.load('/nobackup/nnsanche/NO_BHs/pioneer50h243.1536gst1bwK1/pioneer50h243.1536gst1bwK1.003456')
+    s_cr = pynbody.load('/nobackup/ibutsky/simulations/patient0_new/pioneer50h243.1536gst1bwK1BH.002432')
+    s_agncr = pynbody.load('/nobackup/ibutsky/simulations/patient0_agncr/pioneer50h243.1536gst1bwK1BH.%06d'%(output))
+    plt.xlim(0, 12)
+#    sfh_p0noBH = pp.sfh(s_sn, label = 'Thermal SNe only')
+    sfh_cr = pp.sfh(s_cr, label = 'CR SNe feedback')
+    sfh_p0 = pp.sfh(s_agn, label = 'P0')
+    sfh_agncr = pp.sfh(s_agncr, label = 'P0+CR')
+    
     plt.legend()
-    plt.savefig('../plots/pioneer.%06d_sfh_compare.png'%(output))
+    plt.savefig('sfh_compare_%06d.png'%(output))
+    print(sfh_cr[0])
+#    print(sfh_cr.d)
+    f = h5.File('sfh_data.h5', 'w')
+    f.create_dataset("sfh_p0", data=sfh_p0[0])
+    f.create_dataset("sfh_agncr", data=sfh_agncr[0])
+    f.create_dataset("sfh_cr", data = sfh_cr[0])
+
+    f.create_dataset("time_p0", data=sfh_p0[1])
+    f.create_dataset("time_agncr", data=sfh_agncr[1])
+    f.create_dataset("time_cr", data = sfh_cr[1])
+    f.close()
 
 def make_rotation_curves(s, output, cr):
     pynbody.analysis.angmom.faceon(s.g)
@@ -94,7 +109,7 @@ def make_rotation_curves(s, output, cr):
     ps = pynbody.analysis.profile.Profile(s.s,min=.01,max=500,type='log',ndim=3)
     pd = pynbody.analysis.profile.Profile(s.d,min=.01,max=500,type='log',ndim=3)
 
-    # make the plot                                                                                                                                                               
+    # make the plot
     plt.plot(p['rbins'],p['v_circ'],label='total')
     plt.plot(pg['rbins'],pg['v_circ'],label='gas')
     plt.plot(ps['rbins'],ps['v_circ'],label='stars')

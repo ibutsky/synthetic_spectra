@@ -1,5 +1,8 @@
 import matplotlib.pylab as plt
+from matplotlib.colors import LinearSegmentedColormap, ListedColormap
+
 import seaborn as sns
+import palettable
 import h5py as h5
 import numpy as np
 import csv
@@ -107,7 +110,14 @@ def load_csv_data():
     return ion_list, logN_list, logNerr_list, b_list, berr_list, zcen_list, \
             zcen_sd_list, ray_id_list, model_list, vel_list, impact_list, ovi_label_list
             
-
+def get_total_column(ray_id_list, log_col_list):
+    total_col = np.array(len(ray_id_list)*[0.0])
+    for ray_id in range(0, max(ray_id_list)):
+        mask = ray_id_list == ray_id
+        cols = np.sum(np.power(10, log_col_list[mask]))
+        total_col[mask] = np.log10(cols)
+    return total_col
+    
 def plot_details(xfield, yfield, log=True):
     if xfield == 'impact':
         xlims  = (0.1, 89)
@@ -288,4 +298,69 @@ def plot_multipanel_scatter(ion_list, xfield = 'impact', yfield = 'col', nrows =
     
     fig.tight_layout()
     return fig, ax    
-        
+
+def get_cmap(field):
+    if field =='density':
+        cmap = palettable.cmocean.sequential.Tempo_6.mpl_colormap
+    elif field == 'pressure':
+        cmap = 'magma'
+    elif field == 'temperature' or field == 'Temperature':
+        cmap = palettable.scientific.sequential.LaJolla_20_r.mpl_colormap
+    elif field == 'cr_eta':
+        cmap = palettable.scientific.sequential.Tokyo_20.mpl_colormap
+    elif field == 'cr_pressure':
+        cmap = palettable.scientific.sequential.Turku_20.mpl_colormap
+    elif field == 'velocity_magnitude' or field == 'velocity_los':
+        cmap = palettable.scientific.diverging.Vik_20.mpl_colormap
+    elif field == 'magnetic_field_strength':
+        cmap = palettable.scientific.sequential.LaPaz_20.mpl_colormap
+    elif field.__contains__('H_p'):
+        cmap = ListedColormap(sns.color_palette("Blues", 7))
+    elif field.__contains__('Si_p'):
+        cmap = ListedColormap(palettable.cartocolors.sequential.Mint_7.mpl_colors)
+    elif field.__contains__('O_p'):
+        cmap = ListedColormap(palettable.cartocolors.sequential.BrwnYl_7.mpl_colors)
+    elif field == 'metallicity' or field == 'metallicity2':
+        cmap = palettable.cartocolors.diverging.Geyser_7.mpl_colormap
+    else:
+        cmap = 'viridis'
+        print(field, "doesn't have a designated colormap")
+    return cmap
+
+def get_palette(field):
+    if field =='density':
+        cmap = palettable.cmocean.sequential.Tempo_6.mpl_colors
+    elif field == 'pressure':
+        cmap = 'magma'
+    elif field == 'temperature' or field == 'Temperature':
+        cmap = palettable.scientific.sequential.LaJolla_20_r.mpl_colors
+    elif field == 'cr_eta':
+        cmap = palettable.scientific.sequential.Tokyo_20.mpl_colors
+    elif field == 'cr_pressure':
+        cmap = palettable.scientific.sequential.Turku_20.mpl_colors
+    elif field == 'velocity_magnitude' or field == 'velocity_los':
+        cmap = palettable.scientific.diverging.Vik_20.mpl_colors
+    elif field == 'magnetic_field_strength':
+        cmap = palettable.scientific.sequential.LaPaz_20.mpl_colors
+    elif field.__contains__('H_p') or field == 'H I':
+        cmap = sns.color_palette("Blues", 7)
+    elif field.__contains__('Si_p') or field == 'Si III':
+        cmap = palettable.cartocolors.sequential.Mint_7.mpl_colors
+    elif field.__contains__('O_p') or field == 'O VI':
+        cmap = palettable.cartocolors.sequential.BrwnYl_7.mpl_colors
+    elif field == 'metallicity' or field == 'metallicity2':
+        cmap = palettable.cartocolors.diverging.Geyser_7.mpl_colors
+    else:
+        cmap = 'viridis'
+        print(field, "doesn't have a designated colormap")
+    return cmap
+    
+#def get_palette(ion):
+#    if ion == 'O VI':
+ #       palette = palettable.cartocolors.sequential.BrwnYl_7.mpl_colors
+  #  elif ion == 'Si III':
+  #      palette = palettable.cartocolors.sequential.Mint_7.mpl_colors
+  #  elif ion == 'H I':
+   #     palette = sns.color_palette("Blues")
+  #  return palette
+

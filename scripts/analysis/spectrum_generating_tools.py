@@ -5,6 +5,7 @@ import os
 import sys
 #import pynbody
 import yt
+import trident
 from yt import YTArray
 from yt.units import YTQuantity
 
@@ -23,6 +24,12 @@ def rotate(v, phi, theta):
 def assert_within(value, target, error):
     assert(value < target + error)
     assert(value > target - error)
+
+def _omass(field, data):
+    return data[('Gas', 'Mass')] * data[('Gas', 'OxMassFrac')]
+
+def _femass(field, data):
+    return data[('Gas', 'Mass')] * data[('Gas', 'FeMassFrac')]
 
 def _CRPressure(field, data):
     crgamma = 4./3.
@@ -108,9 +115,9 @@ def stitch_g130m_g160m_spectra(fn_g130, fn_g160, fn_combined):
     fits_combined.writeto(fn_combined, overwrite = True)
 
 
-def load_simulation_properties(model, output=3195):
+def load_simulation_properties(model, output=3195, ion_list = ['H I', 'O VI', 'Si II', 'Si III', 'Si IV', 'Mg II', 'N V']):
     if model == 'P0':
-        ds = yt.load('/Users/irynabutsky/simulations/patient0/pioneer.%06d'%output)
+        ds = yt.load('/Users/irynabutsky/simulations/patient0/pioneer50h243.1536gst1bwK1BH.%06d'%output)
         gcenter = YTArray([-16933.77317667, -12009.28144633,   5305.25448309], 'kpc') # generated with shrink sphere
         bulk_velocity =	YTArray([73.05701672, -239.32976334,  -68.07892736], 'km/s')
         ds.add_field(('gas', 'pressure'), function=_Pressure, sampling_type = 'particle',
@@ -124,6 +131,10 @@ def load_simulation_properties(model, output=3195):
         ds.add_field(('gas', 'pressure'), function=_Pressure, sampling_type = 'particle',
                      units = ds.unit_system["pressure"])
         ds.add_field(('gas', 'CRBeta'), function = _CRBeta, sampling_type = 'particle', units = '')
+        
+    ds.add_field(('gas', 'O_mass'), function = _omass, sampling_type = 'particle', units = ds.unit_system['mass'])
+    ds.add_field(('gas', 'Fe_mass'), function = _femass, sampling_type = 'particle', units = ds.unit_system['mass'])
+    trident.add_ion_fields(ds, ions = ion_list)
     
     return ds, gcenter, bulk_velocity
             
@@ -158,3 +169,17 @@ def calculate_bulk_los_velocity(bulk_velocity, ray_start_coordinates, ray_end_co
     cos_theta = np.dot(bulk_velocity, ray) / (bv_mag * ray_mag)
     return bv_mag*cos_theta
     
+
+def calculate_ray_direction(ray_id, ray_data_file = '../../data/random_sightlines.dat'):
+    ray_id_list, impact, xi, yi, zi, xf, yf, zf = np.loadtxt(ray_data_file, skiprows = 1, unpack = True)
+    
+    start_pos = np.array([xi[ray_id], yi[ray_id], zi[ray_id]])
+    end_pos   = np.array([xf[ray_id], yf[ray_id], zf[ray_id]])
+    return end_pos - start_pos
+
+
+def load_bulk_velocity(model):
+    if model == 'P0':
+        return np.array([73.05701672, -239.32976334,  -68.07892736])
+    elif model == 'P0_agncr' or model == 'P0agncr':
+        return np.array([74.98331176, -240.71723683,  -67.77556155])

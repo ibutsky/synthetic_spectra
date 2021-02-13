@@ -21,7 +21,7 @@ field_list = [('gas', 'density'), ('Gas', 'Temperature'), ('Gas', 'metallicity2'
               ('gas', 'Si_p3_number_density'), ('gas', 'N_p4_number_density')]
 
 weight_field = [('Gas', 'Density'), ('Gas', 'Density'), ('Gas', 'Density'), \
-                None, None, None, None]
+                None, None, None, None, None, None]
 
 
 # load in simulation data and add ion fields
@@ -31,6 +31,7 @@ ds, cen, bv = spg.load_simulation_properties(model)
 
 trident.add_ion_fields(ds, ions = ['O VI', 'H I', 'Si II', 'Si III', 'Si IV', 'N V'])
 ds.add_field(('Gas', 'metallicity2'), function = _metallicity2, units = 'Zsun', sampling_type = 'particle')
+sp = ds.sphere(cen, (500, 'kpc'))
 
 
 
@@ -39,7 +40,7 @@ for i in range(len(field_list)):
     print(field_list[0])
     dset = field_list[i][1]
     if dset not in plot_data.keys():
-        proj = yt.ProjectionPlot(ds, 'y', field_list[i], weight_field = weight_field[i], width=(300, 'kpc'), center = cen)
+        proj = yt.ProjectionPlot(ds, 'y', field_list[i], weight_field = weight_field[i], width=(300, 'kpc'), center = cen, data_source = sp)
         proj_frb =  proj.data_source.to_frb((300, 'kpc'), 800)
 
         plot_data.create_dataset(dset, data = np.array(proj_frb[field_list[i]]))

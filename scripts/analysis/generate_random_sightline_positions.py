@@ -5,8 +5,7 @@ import h5py as h5
 import spectrum_generating_tools as spg
 
 # this generates a list of random sightline positions that will be read in by generate_spectra.py
-def generate_random_sightline_positions(num_sl = 100, fn = 'random_sightlines.dat', rmin = 10, rmax = 70, ray_len = 500):
-    
+def generate_random_sightline_positions(num_sl = 100, fn = 'random_sightlines.dat', rmin = 10, rmax = 70, ray_len = 500):    
     gcenter = [0, 0, 0] # generating generic coordinates assuming galaxy center is at origin
     ray_id = 0
     
@@ -26,10 +25,10 @@ def generate_random_sightline_positions(num_sl = 100, fn = 'random_sightlines.da
 
     outfile.close()
 
-rmin = 71
+rmin = 51
 rmax = 300
-#rmin = 15
-#rmax = 70
+#rmin = 10
+#rmax = 50
 generate_random_sightline_positions(rmin = rmin, rmax = rmax)
 
                 

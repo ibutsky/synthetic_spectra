@@ -39,12 +39,13 @@ def load_data(property_list, fn = None, ovi_label = None,
     data.close()
     return np.array(return_array)
 
-def load_csv_data():
-    csvfile = '/Users/irynabutsky/Downloads/merged_solutions.csv'
+def load_csv_data(csvfile = None):
+    if csvfile is None:
+        csvfile = '/Users/irynabutsky/Downloads/merged_solutions.csv'
     data = csv.reader(open(csvfile, 'rt'))
 
-    ion_list, logN_list, logNerr_list, b_list, berr_list, zcen_list, \
-        zcen_sd_list, ray_id_list, model_list = [], [],[],[],[],[],[],[],[]
+    ion_list, logN_list, logNerr_list, b_list, berr_list, vcen_list, \
+        vcen_sd_list, ray_id_list, model_list = [], [],[],[],[],[],[],[],[]
 
     counter = 0
     for row in data:
@@ -54,10 +55,10 @@ def load_csv_data():
             logNerr_list.append(float(row[2]))
             b_list.append(float(row[3]))
             berr_list.append(float(row[4]))
-            zcen_list.append(float(row[5]))
-            zcen_sd_list.append(float(row[6]))
-            ray_id_list.append(int(row[7][-4:]))
-            model_list.append(row[7][:-4])
+            vcen_list.append(float(row[6]))
+            vcen_sd_list.append(float(row[7]))
+            ray_id_list.append(int(row[5][-4:]))
+            model_list.append(row[5][:-4])
         counter += 1
                           
     ion_list = np.array(ion_list)
@@ -65,16 +66,16 @@ def load_csv_data():
     logNerr_list = np.array(logNerr_list)
     b_list = np.array(b_list)
     berr_list = np.array(berr_list)
-    zcen_list = np.array(zcen_list)
-    zcen_sd_list = np.array(zcen_sd_list)
+    vcen_list = np.array(vcen_list)
+    vcen_sd_list = np.array(vcen_sd_list)
     ray_id_list = np.array(ray_id_list)
     model_list = np.array(model_list)
 
-    zsys = 0.25
-    vel_list = c * ((1 + zcen_list) / (1 + zsys) - 1)
+#    zsys = 0.25
+#    vel_list = c * ((1 + zcen_list) / (1 + zsys) - 1)
 
     # make O VI labels
-    ovi_label_list = np.array(len(vel_list)*[None])
+    ovi_label_list = np.array(len(vcen_list)*[None])
     for i in range(max(ray_id_list)):
         for model in ['P0', 'P0agncr']:
             ovi_mask = (ray_id_list == i) & (model_list == model) & (ion_list == 'OVI')
@@ -85,16 +86,13 @@ def load_csv_data():
             if len(ion_list[siIII_mask]) == 0:
                 ovi_label_list[ovi_mask] = 'nolow'
             else:
-                o_vel_list = vel_list[ovi_mask]
-                si_vel_list = vel_list[siIII_mask]
+                o_vel_list = vcen_list[ovi_mask]
+                si_vel_list = vcen_list[siIII_mask]
                 for j, o_vel in enumerate(o_vel_list):
                     dvel_list = o_vel - si_vel_list
-                    ovi_label_mask = ovi_mask & (vel_list == o_vel)
-                   # print(dvel_list, min(np.abs(dvel_list)))
+                    ovi_label_mask = ovi_mask & (vcen_list == o_vel)
                     if min(np.abs(dvel_list)) > 35:
-                      #  print(j, 'nolow', ovi_label_list[ovi_mask])
                         ovi_label_list[ovi_label_mask] = 'nolow'
-                       # print('theoretical update',  ovi_label_list[ovi_mask])
                     elif b_list[ovi_label_mask] > 40:
                         ovi_label_list[ovi_label_mask] = 'broad'
                     else:
@@ -107,8 +105,8 @@ def load_csv_data():
         r = impacts[mask][0]
         impact_list = np.append(impact_list, r)
         
-    return ion_list, logN_list, logNerr_list, b_list, berr_list, zcen_list, \
-            zcen_sd_list, ray_id_list, model_list, vel_list, impact_list, ovi_label_list
+    return ion_list, logN_list, logNerr_list, b_list, berr_list, vcen_list, \
+            vcen_sd_list, ray_id_list, model_list, impact_list, ovi_label_list
             
 def get_total_column(ray_id_list, log_col_list):
     total_col = np.array(len(ray_id_list)*[0.0])
@@ -310,7 +308,7 @@ def get_cmap(field):
         cmap = palettable.scientific.sequential.Tokyo_20.mpl_colormap
     elif field == 'cr_pressure':
         cmap = palettable.scientific.sequential.Turku_20.mpl_colormap
-    elif field == 'velocity_magnitude' or field == 'velocity_los':
+    elif field.__contains__('velocity'):
         cmap = palettable.scientific.diverging.Vik_20.mpl_colormap
     elif field == 'magnetic_field_strength':
         cmap = palettable.scientific.sequential.LaPaz_20.mpl_colormap
@@ -330,8 +328,6 @@ def get_cmap(field):
 def get_palette(field):
     if field =='density':
         cmap = palettable.cmocean.sequential.Tempo_6.mpl_colors
-    elif field == 'pressure':
-        cmap = 'magma'
     elif field == 'temperature' or field == 'Temperature':
         cmap = palettable.scientific.sequential.LaJolla_20_r.mpl_colors
     elif field == 'cr_eta':
@@ -351,8 +347,8 @@ def get_palette(field):
     elif field == 'metallicity' or field == 'metallicity2':
         cmap = palettable.cartocolors.diverging.Geyser_7.mpl_colors
     else:
-        cmap = 'viridis'
-        print(field, "doesn't have a designated colormap")
+        cmap = palettable.cmocean.sequential.Tempo_6.mpl_colors
+        print(field, "doesn't have a designated color palette")
     return cmap
     
 #def get_palette(ion):

@@ -31,7 +31,7 @@ field_list = [('gas', 'density'), ('Gas', 'Temperature'), ('Gas', 'metallicity2'
               ('gas', 'O_p5_number_density'),\
               ('gas', 'Si_p2_number_density'), ('gas', 'H_p0_number_density')]
 
-zlim_list = [(3e-29, 1e-25), (3e4, 1e6), (1e-2, 1), (1e13, 3e15), (1e13, 3e16), (1e13, 1e21)]
+zlim_list = [(3e-29, 1e-25), (3e4, 1e6), (1e-2, 1), (1e13, 3e15), (1e12, 3e16), (1e13, 1e21)]
 cbar_title_list =[r'$\mathrm{Density}\ (\mathrm{g\ cm^{-3}})$', \
                   r'$\mathrm{Temperature}\ (\mathrm{K})$', \
                   r'$\mathrm{Metallicity\ } (\mathrm{Z_{\odot}})$',\

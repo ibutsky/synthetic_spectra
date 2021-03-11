@@ -41,24 +41,34 @@ def load_data(property_list, fn = None, ovi_label = None,
 
 def load_csv_data(csvfile = None):
     if csvfile is None:
-        csvfile = '/Users/irynabutsky/Downloads/merged_solutions.csv'
+        csvfile = '/Users/irynabutsky/Downloads/merged_solutions_with_upper_limits.csv'
     data = csv.reader(open(csvfile, 'rt'))
 
     ion_list, logN_list, logNerr_list, b_list, berr_list, vcen_list, \
-        vcen_sd_list, ray_id_list, model_list = [], [],[],[],[],[],[],[],[]
+        vcen_sd_list, ray_id_list, model_list, detection_list = [], [],[],[],[],[],[],[],[],[]
 
     counter = 0
+    dummy = -9999
     for row in data:
         if counter > 0:
-            ion_list.append(row[0])
-            logN_list.append(float(row[1]))
-            logNerr_list.append(float(row[2]))
-            b_list.append(float(row[3]))
-            berr_list.append(float(row[4]))
-            vcen_list.append(float(row[6]))
-            vcen_sd_list.append(float(row[7]))
-            ray_id_list.append(int(row[5][-4:]))
-            model_list.append(row[5][:-4])
+            detection = row[9]
+            detection_list.append(detection)
+            ion_list.append(row[1])
+            logN_list.append(float(row[2]))
+            model_list.append(row[6][:-4])
+            ray_id_list.append(int(row[6][-4:]))
+            if detection == 'detection':
+                logNerr_list.append(float(row[3]))
+                b_list.append(float(row[4]))
+                berr_list.append(float(row[5]))
+                vcen_list.append(float(row[7]))
+                vcen_sd_list.append(float(row[8]))
+            else:
+                logNerr_list.append(dummy)
+                b_list.append(dummy)
+                berr_list.append(dummy)
+                vcen_list.append(dummy)
+                vcen_sd_list.append(dummy)
         counter += 1
                           
     ion_list = np.array(ion_list)
@@ -70,6 +80,7 @@ def load_csv_data(csvfile = None):
     vcen_sd_list = np.array(vcen_sd_list)
     ray_id_list = np.array(ray_id_list)
     model_list = np.array(model_list)
+    detection_list = np.array(detection_list)
 
 #    zsys = 0.25
 #    vel_list = c * ((1 + zcen_list) / (1 + zsys) - 1)
@@ -78,8 +89,9 @@ def load_csv_data(csvfile = None):
     ovi_label_list = np.array(len(vcen_list)*[None])
     for i in range(max(ray_id_list)):
         for model in ['P0', 'P0agncr']:
-            ovi_mask = (ray_id_list == i) & (model_list == model) & (ion_list == 'OVI')
-            siIII_mask = (ray_id_list == i) & (model_list == model) & (ion_list == 'SiIII')
+            mask = (ray_id_list == i) & (model_list == model) & (detection_list == 'detection')
+            ovi_mask = mask & (ion_list == 'OVI') 
+            siIII_mask = mask & (ion_list == 'SiIII') 
             #print(i, model, ion_list[ovi_mask], ion_list[siIII_mask])
             if len(ion_list[ovi_mask]) == 0:
                 continue
@@ -93,7 +105,7 @@ def load_csv_data(csvfile = None):
                     ovi_label_mask = ovi_mask & (vcen_list == o_vel)
                     if min(np.abs(dvel_list)) > 35:
                         ovi_label_list[ovi_label_mask] = 'nolow'
-                    elif b_list[ovi_label_mask] > 40:
+                    elif b_list[ovi_label_mask] > 30:
                         ovi_label_list[ovi_label_mask] = 'broad'
                     else:
                         ovi_label_list[ovi_label_mask] = 'narrow'
@@ -106,7 +118,7 @@ def load_csv_data(csvfile = None):
         impact_list = np.append(impact_list, r)
         
     return ion_list, logN_list, logNerr_list, b_list, berr_list, vcen_list, \
-            vcen_sd_list, ray_id_list, model_list, impact_list, ovi_label_list
+            vcen_sd_list, ray_id_list, model_list, impact_list, ovi_label_list, detection_list
             
 def get_total_column(ray_id_list, log_col_list):
     total_col = np.array(len(ray_id_list)*[0.0])
@@ -308,7 +320,7 @@ def get_cmap(field):
         cmap = palettable.scientific.sequential.Tokyo_20.mpl_colormap
     elif field == 'cr_pressure':
         cmap = palettable.scientific.sequential.Turku_20.mpl_colormap
-    elif field.__contains__('velocity'):
+    elif field.__contains__('velocity') or field == 'radial_velocity':
         cmap = palettable.scientific.diverging.Vik_20.mpl_colormap
     elif field == 'magnetic_field_strength':
         cmap = palettable.scientific.sequential.LaPaz_20.mpl_colormap

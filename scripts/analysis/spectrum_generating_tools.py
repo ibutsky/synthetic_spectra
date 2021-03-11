@@ -54,7 +54,7 @@ def _CRBeta(field, data):
     pressure = u * data[('Gas', 'density')].in_units('g/cm**3').d * (gamma-1.)
     #crgamma = 4./3.
  #   crpressure =  (crgamma - 1.) * data[('Gas', 'CREnergy')].d * data[('Density')].in_units('g/cm**3').d                                                                                                         
-    return data[('gas', 'CRPressure')]/ data[('gas', 'pressure')]
+    return data[('gas', 'cr_pressure')]/ data[('gas', 'pressure')]
     
 def generate_random_ray_coordinates(center, rmin, rmax, ray_len):
     # center: the coordinates of the center of the simulation
@@ -115,7 +115,7 @@ def stitch_g130m_g160m_spectra(fn_g130, fn_g160, fn_combined):
     fits_combined.writeto(fn_combined, overwrite = True)
 
 
-def load_simulation_properties(model, output=3195, ion_list = ['H I', 'O VI', 'Si II', 'Si III', 'Si IV', 'Mg II', 'N V']):
+def load_simulation_properties(model, output=3195, ion_list = ['H I', 'O VI', 'Si II', 'Si III', 'Si IV', 'Mg II', 'N V', 'C IV']):
     if model == 'P0':
         ds = yt.load('/Users/irynabutsky/simulations/patient0/pioneer50h243.1536gst1bwK1BH.%06d'%output)
         gcenter = YTArray([-16933.77317667, -12009.28144633,   5305.25448309], 'kpc') # generated with shrink sphere
@@ -126,11 +126,12 @@ def load_simulation_properties(model, output=3195, ion_list = ['H I', 'O VI', 'S
         ds = yt.load('/Users/irynabutsky/simulations/patient0_agncr/pioneer.%06d'%output)
         gcenter = YTArray([-16933.48544591, -12006.24067239,   5307.33807425], 'kpc') # generated with shrink sphere
         bulk_velocity = YTArray([74.98331176, -240.71723683,  -67.77556155], 'km/s')        
-        ds.add_field(('gas', 'CRPressure'), function=_CRPressure, sampling_type = 'particle', 
+        ds.add_field(('gas', 'cr_pressure'), function=_CRPressure, sampling_type = 'particle', 
                      units = ds.unit_system["pressure"])
         ds.add_field(('gas', 'pressure'), function=_Pressure, sampling_type = 'particle',
                      units = ds.unit_system["pressure"])
-        ds.add_field(('gas', 'CRBeta'), function = _CRBeta, sampling_type = 'particle', units = '')
+        ds.add_field(('gas', 'cr_eta'), display_name = ('$P_{\\rm c} / P_{\\rm g}$'),
+                     function = _CRBeta, sampling_type = 'particle', units = '')
         
     ds.add_field(('gas', 'O_mass'), function = _omass, sampling_type = 'particle', units = ds.unit_system['mass'])
     ds.add_field(('gas', 'Fe_mass'), function = _femass, sampling_type = 'particle', units = ds.unit_system['mass'])

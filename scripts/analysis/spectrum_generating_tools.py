@@ -116,6 +116,7 @@ def stitch_g130m_g160m_spectra(fn_g130, fn_g160, fn_combined):
 
 
 def load_simulation_properties(model, output=3195, ion_list = ['H I', 'O VI', 'Si II', 'Si III', 'Si IV', 'Mg II', 'N V', 'C IV']):
+    # note AHF finds this value for P0:  78.13         -239.42          -65.99 
     if model == 'P0':
         ds = yt.load('/Users/irynabutsky/simulations/patient0/pioneer50h243.1536gst1bwK1BH.%06d'%output)
         gcenter = YTArray([-16933.77317667, -12009.28144633,   5305.25448309], 'kpc') # generated with shrink sphere

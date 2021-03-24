@@ -1,6 +1,7 @@
 import matplotlib.pylab as plt
 from matplotlib.colors import LinearSegmentedColormap, ListedColormap
 
+from yt import YTArray
 import seaborn as sns
 import palettable
 import h5py as h5
@@ -128,6 +129,47 @@ def get_total_column(ray_id_list, log_col_list):
         total_col[mask] = np.log10(cols)
     return total_col
     
+    
+def convert_to_vel(wl, w0):
+    return (wl-w0) / w0 * 2.9979e5
+
+def los_vel(vx, vy, vz, bv = [0, 0, 0], normal = [0, 0, 1]):
+    vx = np.array(vx - bv[0])
+    vy = np.array(vy - bv[1])
+    vz = np.array(vz - bv[2])
+
+    normal_mag = np.linalg.norm(normal)
+    normal = np.divide(normal, normal_mag)
+
+    v_dot_norm = vx*normal[0] + vy*normal[1] + vz*normal[2]
+    return v_dot_norm
+    
+
+def load_sightline_scatter_data(sim, ray_id, output = 3195):
+    fn = '../../data/unanalyzed_spectra/ray_%s_%i_%i.h5'%(sim, output, ray_id)
+    plot_data = h5.File(fn, 'r')['grid']
+
+    l = YTArray(plot_data['l'], 'cm')
+    l = np.array(l.in_units('kpc'))
+
+    temperature = np.array(plot_data['temperature'])
+    density     = np.array(plot_data['density'])
+    metallicity = np.array(plot_data['metallicity'])*77.22007722007721  # converting from code units to zsun
+    vx          = np.array(plot_data['relative_velocity_x']) / 1e5 # converting to km/s
+    vy          = np.array(plot_data['relative_velocity_y']) / 1e5 # converting to km/s
+    vz          = np.array(plot_data['relative_velocity_z']) / 1e5 # converting to km/s
+
+    vlos        = np.array(plot_data['velocity_los']) / 1e5
+    dl = np.array(plot_data['dl'])
+    
+    # O VI and H I column densities
+    oden = np.array(plot_data['O_p5_number_density'])
+    ocol  = dl * np.array(oden)
+    sicol = dl* np.array(plot_data['Si_p2_number_density'])
+    hcol  = dl * np.array(plot_data['H_p0_number_density'])
+    
+    return l, temperature, density, metallicity, vlos, ocol, sicol
+
 def plot_details(xfield, yfield, log=True):
     if xfield == 'impact':
         xlims  = (0.1, 89)

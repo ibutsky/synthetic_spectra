@@ -17,6 +17,8 @@ def _metallicity2(field, data):
 output = 3195
 model = sys.argv[1]
 width = 100
+view = 'z'
+
 
 field_list = [('gas', 'density'), ('Gas', 'Temperature'), ('Gas', 'metallicity2'),\
              ('gas', 'O_p5_number_density'), ('gas', 'Si_p2_number_density'),\
@@ -42,18 +44,23 @@ left_edge = cen - YTArray([250, 250, 250], 'kpc')
 right_edge = cen + YTArray([250, 250, 250], 'kpc')
 
 box = ds.region(cen, left_edge, right_edge)
-
+box.set_field_parameter('bulk_velocity', bv)
 
 
 # set up projection plots for fields that are weighted and unweighted
+#del plot_data['radial_velocity']
 for i in range(len(field_list)):
     print(field_list[0])
-    dset = field_list[i][1]
+    field = field_list[i][1]
+    dset = '%s_%s'%(field,view)
     if dset not in plot_data.keys():
-        proj = yt.ProjectionPlot(ds, 'y', field_list[i], weight_field = weight_field[i], width=(width, 'kpc'), center = cen, data_source = box)
+        proj = yt.ProjectionPlot(ds, view, field, weight_field = weight_field[i], width=(width, 'kpc'), center = cen, data_source = box)
         proj_frb =  proj.data_source.to_frb((width, 'kpc'), 800)
-
-        plot_data.create_dataset(dset, data = np.array(proj_frb[field_list[i]]))
+    
+        if field_list[0] == 'radial_velocity':
+            plot_data.create_dataset(dset, data = np.array(proj_frb[field_list[i]].in_units('km/s')))
+        else:
+            plot_data.create_dataset(dset, data = np.array(proj_frb[field_list[i]]))
         plot_data.flush()
 
 

@@ -1,5 +1,7 @@
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
+import yt
+from yt import YTArray
 
 import numpy as np
 import h5py as h5
@@ -160,16 +162,21 @@ def load_r_cdens(fname, ion, underscore = False):
         cname = "%s_%s"%(ion.replace(" ", ""), axis)
            
         if cname in frb.keys():
-            r_arr = np.concatenate((r_arr, frb['radius'].value))
-            cdens_arr = np.concatenate((cdens_arr, frb[cname].value))
+            r_arr = np.concatenate((r_arr, frb['radius'][:]))
+            cdens_arr = np.concatenate((cdens_arr, frb[cname][:]))
     return r_arr, cdens_arr
 
 
 def make_projection(ds, axis, ion_fields, center, width):
-    sp = ds.sphere(center, width)
-    p = ds.proj(ion_fields, axis, weight_field=None, data_source = sp, center=center, method='integrate')
+    half_width = np.array([width, width, width]) / 2.
+    left_edge = center - YTArray(half_width, 'kpc')
+    right_edge = center + YTArray(half_width, 'kpc')
+    box = ds.region(center, left_edge, right_edge)
+    proj = yt.ProjectionPlot(ds, axis, ion_fields, weight_field = None, width=width, center = center, data_source = box)
+    return proj.data_source.to_frb((width, 'kpc'), 800)
+#    p = ds.proj(ion_fields, axis, weight_field=None, data_source = box, center=center, method='integrate')
     print('made_projection')
-    return p.to_frb(width, 800, center=center)
+#    return p.to_frb(width, 800, center=center)
 
 
 def generate_mask(data, ion_list, model =  None):

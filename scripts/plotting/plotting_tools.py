@@ -40,13 +40,13 @@ def load_data(property_list, fn = None, ovi_label = None,
     data.close()
     return np.array(return_array)
 
-def load_csv_data(csvfile = None):
+def load_csv_data(csvfile = None, b_cutoff = 40, v_cutoff = 35):
     if csvfile is None:
-        csvfile = '/Users/irynabutsky/Downloads/merged_solutions_with_upper_limits.csv'
+        csvfile = '/Users/irynabutsky/work/synthetic_spectra/data/analyzed_spectra/merged_solutions_with_kinematics.csv'
     data = csv.reader(open(csvfile, 'rt'))
 
     ion_list, logN_list, logNerr_list, b_list, berr_list, vcen_list, \
-        vcen_sd_list, ray_id_list, model_list, detection_list = [], [],[],[],[],[],[],[],[],[]
+        vcen_sd_list, ray_id_list, model_list, detection_list, align_list = [],[],[],[],[],[],[],[],[],[],[]
 
     counter = 0
     dummy = -9999
@@ -54,10 +54,16 @@ def load_csv_data(csvfile = None):
         if counter > 0:
             detection = row[9]
             detection_list.append(detection)
-            ion_list.append(row[1])
+            ion = row[1]
+            ion_list.append(ion)
             logN_list.append(float(row[2]))
             model_list.append(row[6][:-4])
             ray_id_list.append(int(row[6][-4:]))
+            align = row[10]
+            if align == '':
+                align_list.append(dummy)
+            else:
+                align_list.append(int(align))
             if detection == 'detection':
                 logNerr_list.append(float(row[3]))
                 b_list.append(float(row[4]))
@@ -82,6 +88,7 @@ def load_csv_data(csvfile = None):
     ray_id_list = np.array(ray_id_list)
     model_list = np.array(model_list)
     detection_list = np.array(detection_list)
+    align_list = np.array(align_list)
 
 #    zsys = 0.25
 #    vel_list = c * ((1 + zcen_list) / (1 + zsys) - 1)
@@ -104,9 +111,9 @@ def load_csv_data(csvfile = None):
                 for j, o_vel in enumerate(o_vel_list):
                     dvel_list = o_vel - si_vel_list
                     ovi_label_mask = ovi_mask & (vcen_list == o_vel)
-                    if min(np.abs(dvel_list)) > 35:
+                    if min(np.abs(dvel_list)) > v_cutoff:
                         ovi_label_list[ovi_label_mask] = 'nolow'
-                    elif b_list[ovi_label_mask] > 30:
+                    elif b_list[ovi_label_mask] > b_cutoff:
                         ovi_label_list[ovi_label_mask] = 'broad'
                     else:
                         ovi_label_list[ovi_label_mask] = 'narrow'
@@ -118,8 +125,35 @@ def load_csv_data(csvfile = None):
         r = impacts[mask][0]
         impact_list = np.append(impact_list, r)
         
-    return ion_list, logN_list, logNerr_list, b_list, berr_list, vcen_list, \
-            vcen_sd_list, ray_id_list, model_list, impact_list, ovi_label_list, detection_list
+    return ion_list, logN_list, logNerr_list, b_list, berr_list, vcen_list, vcen_sd_list,\
+            ray_id_list, model_list, impact_list, ovi_label_list, detection_list, align_list
+
+
+def calculate_min_dvel(ion1, ion2):
+    csv_data_file = '../../data/analyzed_spectra/merged_solutions_with_kinematics.csv'
+    ion_list, logN_list, logNerr_list, b_list, berr_list, vcen_list, vel_err_list, ray_id_list,\
+            model_list, impact_list, ovi_label_list, detection_list, align_list\
+            = load_csv_data(csv_data_file)
+
+    dvel_list = np.array(len(ion_list)*[np.inf])
+    for i in range(max(ray_id_list)):
+        for model in ['P0', 'P0agncr']:
+            mask = (model_list == model) & (ray_id_list == i)  & (detection_list == 'detection')
+            ion1_mask = mask & (ion_list == ion1) 
+            ion2_mask = mask & (ion_list == ion2) 
+           # print(i, ion_list[ion1_mask], ion_list[ion2_mask])
+            if len(ion_list[ion1_mask]) == 0:
+                continue
+            if len(ion_list[ion2_mask]) == 0:
+                dvel_list[ion1_mask] = np.inf
+            else:
+                ion1_vel_list = vcen_list[ion1_mask]
+                ion2_vel_list = vcen_list[ion2_mask]
+                for j, ion1_vel in enumerate(ion1_vel_list):
+                    ion1_label_mask = ion1_mask & (vcen_list == ion1_vel)
+                    min_dvel = np.min(np.abs(ion1_vel - ion2_vel_list))
+                    dvel_list[ion1_label_mask] = min_dvel
+    return dvel_list
             
 def get_total_column(ray_id_list, log_col_list):
     total_col = np.array(len(ray_id_list)*[0.0])
@@ -394,9 +428,9 @@ def get_palette(field):
         cmap = palettable.scientific.sequential.LaPaz_20.mpl_colors
     elif field.__contains__('H_p') or field == 'H I':
         cmap = sns.color_palette("Blues", 7)
-    elif field.__contains__('Si_p') or field == 'Si III':
+    elif field.__contains__('Si_p') or field.replace(' ', '')  == 'SiIII':
         cmap = palettable.cartocolors.sequential.Mint_7.mpl_colors
-    elif field.__contains__('O_p') or field == 'O VI':
+    elif field.__contains__('O_p') or field.replace(' ', '')  == 'OVI':
         cmap = palettable.cartocolors.sequential.BrwnYl_7.mpl_colors
     elif field == 'metallicity' or field == 'metallicity2':
         cmap = palettable.cartocolors.diverging.Geyser_7.mpl_colors

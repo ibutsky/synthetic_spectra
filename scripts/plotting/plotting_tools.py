@@ -385,7 +385,7 @@ def plot_multipanel_scatter(ion_list, xfield = 'impact', yfield = 'col', nrows =
     fig.tight_layout()
     return fig, ax    
 
-def get_cmap(field):
+def get_cmap(field, listed = True):
     if field =='density':
         cmap = palettable.cmocean.sequential.Tempo_6.mpl_colormap
     elif field == 'pressure':
@@ -401,11 +401,20 @@ def get_cmap(field):
     elif field == 'magnetic_field_strength':
         cmap = palettable.scientific.sequential.LaPaz_20.mpl_colormap
     elif field.__contains__('H_p'):
-        cmap = ListedColormap(sns.color_palette("Blues", 7))
+        if listed:
+            cmap = ListedColormap(sns.color_palette("Blues", 7))
+        else:
+            cmap = 'Blues'#sns.color_palette("Blues", 7))
     elif field.__contains__('Si_p'):
-        cmap = ListedColormap(palettable.cartocolors.sequential.Mint_7.mpl_colors)
+        if listed:
+            cmap = ListedColormap(palettable.cartocolors.sequential.Mint_7.mpl_colors)
+        else:
+            cmap = palettable.cartocolors.sequential.Mint_7.mpl_colormap
     elif field.__contains__('O_p'):
-        cmap = ListedColormap(palettable.cartocolors.sequential.BrwnYl_7.mpl_colors)
+        if listed:
+            cmap = ListedColormap(palettable.cartocolors.sequential.BrwnYl_7.mpl_colors)
+        else:
+            cmap = palettable.cartocolors.sequential.BrwnYl_7.mpl_colormap
     elif field == 'metallicity' or field == 'metallicity2':
         cmap = palettable.cartocolors.diverging.Geyser_7.mpl_colormap
     else:

@@ -23,12 +23,13 @@ view = 'z'
 field_list = [('gas', 'density'), ('Gas', 'Temperature'), ('Gas', 'metallicity2'),\
              ('gas', 'O_p5_number_density'), ('gas', 'Si_p2_number_density'),\
               ('gas', 'H_p0_number_density'), ('gas', 'Si_p1_number_density'),\
-              ('gas', 'Si_p3_number_density'), ('gas', 'N_p4_number_density'),
-              ('gas', 'C_p3_number_density'),\
-              ('gas', 'radial_velocity')]
+              ('gas', 'Si_p3_number_density'), ('gas', 'N_p4_number_density'),\
+              ('gas', 'C_p3_number_density'), ('gas', 'radial_velocity'),\
+              ('gas', 'velocity_relative_z'), ('gas', 'cr_eta')]
+
 
 weight_field = [('Gas', 'Density'), ('Gas', 'Density'), ('Gas', 'Density'), \
-                None, None, None, None, None, None, None, ('Gas', 'Density')]
+                None, None, None, None, None, None, None, ('Gas', 'Density'), ('Gas', 'Density'), ('Gas', 'Density')]
 
 
 # load in simulation data and add ion fields
@@ -57,8 +58,10 @@ for i in range(len(field_list)):
         proj = yt.ProjectionPlot(ds, view, field, weight_field = weight_field[i], width=(width, 'kpc'), center = cen, data_source = box)
         proj_frb =  proj.data_source.to_frb((width, 'kpc'), 800)
     
-        if field_list[0] == 'radial_velocity':
+        if field_list[0].__contains__('velocity'):
             plot_data.create_dataset(dset, data = np.array(proj_frb[field_list[i]].in_units('km/s')))
+        if field_list[0] == 'cr_eta' and model == 'P0':
+            continue
         else:
             plot_data.create_dataset(dset, data = np.array(proj_frb[field_list[i]]))
         plot_data.flush()

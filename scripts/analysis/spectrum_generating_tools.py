@@ -124,6 +124,7 @@ def load_simulation_properties(model, output=3195, ion_list = ['H I', 'O VI', 'S
         ds.add_field(('gas', 'pressure'), function=_Pressure, sampling_type = 'particle',
                      units = ds.unit_system["pressure"])  
     elif model == 'P0_agncr':
+        print('adding cosmic ray')
         ds = yt.load('/Users/irynabutsky/simulations/patient0_agncr/pioneer.%06d'%output)
         gcenter = YTArray([-16933.48544591, -12006.24067239,   5307.33807425], 'kpc') # generated with shrink sphere
         bulk_velocity = YTArray([74.98331176, -240.71723683,  -67.77556155], 'km/s')        

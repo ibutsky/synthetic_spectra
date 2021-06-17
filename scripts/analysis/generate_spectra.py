@@ -8,7 +8,7 @@ import sys
 import spectrum_generating_tools as spg
 
 def make_random_spectrum(model, output = 3195, spectrum_directory = '../../data/unanalyzed_spectra', \
-                         ion_list = 'all', redshift = None):
+                         ion_list = 'all', redshift = None, write_spectra = True):
 
     ds, gcenter, bulk_velocity = spg.load_simulation_properties(model)
     
@@ -19,6 +19,9 @@ def make_random_spectrum(model, output = 3195, spectrum_directory = '../../data/
     if redshift is None:
         redshift = round(ds.current_redshift, 2)
     print(gcenter, gcenter[0], bulk_velocity)
+    field_list = ['temperature', 'density', 'metallicity', 'velocity_x', 'velocity_y', 'velocity_z', 'pressure']
+    if model == 'P0_agncr':
+        field_list.append('cr_pressure')
         
     ray_id_list, impact_list, xs, ys, zs, xe, ye, ze = np.loadtxt('../../data/random_sightlines.dat', skiprows=1, unpack = True)    
     spectrum_data_filename = '%s/%s_z%0.2f_ray_data.dat'%(spectrum_directory, model, redshift)
@@ -37,7 +40,8 @@ def make_random_spectrum(model, output = 3195, spectrum_directory = '../../data/
         
     for i, ray_id in enumerate(ray_id_list):
         spec_name = '%s/COS-FUV_%s_z%.2f_%04d.fits'%(spectrum_directory, model, redshift, int(ray_id))
-        if not os.path.isfile(spec_name):
+        ray_name = '%s/ray_%s_%s_%i.h5'%(spectrum_directory, model, output, ray_id)
+        if not os.path.isfile(ray_name):
             ray_start = ds.arr(gcenter.in_units('kpc').d + np.array([xs[i], ys[i], zs[i]]), 'kpc')
             ray_end   =	ds.arr(gcenter.in_units('kpc').d + np.array([xe[i], ye[i], ze[i]]), 'kpc')
             spectrum_data_outfile.write('%i %.2f %.2f %.2f %.2f %e %e %e %e %e %e %e %e %e\n'%(ray_id, impact_list[i],
@@ -45,40 +49,41 @@ def make_random_spectrum(model, output = 3195, spectrum_directory = '../../data/
                                          ray_start[1], ray_start[2], ray_end[0], ray_end[1], ray_end[2],
                                          gcenter[0].astype(float), gcenter[1].astype(float), gcenter[2].astype(float)))
             spectrum_data_outfile.flush()
-
+            
             ray = trident.make_simple_ray(ds,
                             start_position = ray_start,
                             end_position = ray_end, 
                             lines=ion_list,
                             ftype='gas',
-                            fields           = ['temperature', 'density', 'metallicity', 'velocity_x', 'velocity_y', 'velocity_z'],
+                            fields           = field_list,
                             field_parameters=ad.field_parameters,
                             # the current redshift of the simulation, calculated above, rounded to two decimal places
                             redshift=redshift,
-                            data_filename='%s/ray_%s_%s_%i.h5'%(spectrum_directory, model, output, ray_id))
+                            data_filename=ray_name)
 
-            rd = ray.all_data()
-            dl = rd['dl']
-            ocol = np.cumsum(rd['O_p5_number_density']*dl)[-1]
-            sicol = np.cumsum(rd['Si_p2_number_density']*dl)[-1]
-            hcol = np.cumsum(rd['H_p0_number_density']*dl)[-1]
+            if write_spectra:
+                rd = ray.all_data()
+                dl = rd['dl']
+                ocol = np.cumsum(rd['O_p5_number_density']*dl)[-1]
+                sicol = np.cumsum(rd['Si_p2_number_density']*dl)[-1]
+                hcol = np.cumsum(rd['H_p0_number_density']*dl)[-1]
 
-            col_outfile.write("%i %.2f %.2f %.2f %.2f\n"%(ray_id, impact_list[i], np.log10(ocol), np.log10(sicol), np.log10(hcol)))
-            col_outfile.flush()
+                col_outfile.write("%i %.2f %.2f %.2f %.2f\n"%(ray_id, impact_list[i], np.log10(ocol), np.log10(sicol), np.log10(hcol)))
+                col_outfile.flush()
             
-            for instrument in ['COS-G130M', 'COS-G160M']:
-                sg = trident.SpectrumGenerator(instrument, line_database = 'pyigm_line_list.txt')
-                sg.make_spectrum(ray, lines = ion_list)
-                sg.apply_lsf()
-                sg.add_gaussian_noise(10)
-                temp_name = '%s_%s.fits'%(instrument, model)
-                sg.save_spectrum(temp_name, format = 'FITS')
+                for instrument in ['COS-G130M', 'COS-G160M']:
+                    sg = trident.SpectrumGenerator(instrument, line_database = 'pyigm_line_list.txt')
+                    sg.make_spectrum(ray, lines = ion_list)
+                    sg.apply_lsf()
+                    sg.add_gaussian_noise(10)
+                    temp_name = '%s_%s.fits'%(instrument, model)
+                    sg.save_spectrum(temp_name, format = 'FITS')
             
 
-            # stitch the spectra together in the format you'll need for veeper
-            spg.stitch_g130m_g160m_spectra('COS-G130M_%s.fits'%model, 'COS-G160M_%s.fits'%model, spec_name)
-            os.remove('COS-G130M_%s.fits'%model)
-            os.remove('COS-G160M_%s.fits'%model)
+                # stitch the spectra together in the format you'll need for veeper
+                spg.stitch_g130m_g160m_spectra('COS-G130M_%s.fits'%model, 'COS-G160M_%s.fits'%model, spec_name)
+                os.remove('COS-G130M_%s.fits'%model)
+                os.remove('COS-G160M_%s.fits'%model)
             
     spectrum_data_outfile.close()
     col_outfile.close()
@@ -88,11 +93,12 @@ def make_random_spectrum(model, output = 3195, spectrum_directory = '../../data/
 ion_list = ['H I', 'O VI', 'C II', 'C III', 'C IV', 'Si II', 'Si III', 'Si IV', 'N V', 'Mg II']
 
 sd = '../../data/unanalyzed_spectra'
+write_spectra = False
 
 #model = 'P0'
 model = sys.argv[1]
 
-for i in range(15):
-    make_random_spectrum(model, ion_list = ion_list, spectrum_directory = sd)
+#for i in range(100):
+make_random_spectrum(model, ion_list = ion_list, spectrum_directory = sd, write_spectra = write_spectra)
 
 
